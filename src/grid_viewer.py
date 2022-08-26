@@ -1,0 +1,296 @@
+import os
+import time
+from pygame.constants import K_p
+import yaml
+import pygame
+import random
+import numpy as np
+import pandas as pd
+
+from grid import Grid
+
+# Code initialisatie: logging
+import logging
+import importlib
+importlib.reload(logging)
+
+# create logger
+logger = logging.getLogger('GridView2D')
+
+logger.setLevel(10)
+
+# create file handler which logs even debug messages
+fh = logging.FileHandler('grid-view-2D.log')
+fh.setLevel(logging.DEBUG)
+
+# create console handler with a higher log level
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+
+# create formatter and add it to the handlers
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+fh.setFormatter(formatter)
+ch.setFormatter(logging.Formatter('%(message)s'))
+
+# add the handlers to the logger
+logger.addHandler(fh)
+logger.addHandler(ch)
+
+# Initialize Pandas  display options such that the whole DataFrame is printed
+pd.options.display.max_rows = 999999
+pd.options.display.max_columns = 999999
+
+class GridView2D:
+    def __init__(self, grid: Grid, definitions: pd.DataFrame, 
+                 title: str='', screen_size=(600, 600)):
+        # Initialize PyGame 
+        pygame.init()
+        self.clock = pygame.time.Clock()
+        pygame.key.set_repeat(500, 100)
+        self.robot = None
+        # set grid        
+        self.grid = grid
+        self.grid_size = self.grid.grid_size
+        self.definitions = definitions
+
+        # set viewer variables
+        self.game_over: bool = False
+        self.turns: int = 0
+        self.insert: str = ' '
+        
+        # set the size of all elements of the viewer
+        self.compute_screen_size(screen_size, self.grid_size)
+        
+        # to show the right and bottom border
+        self.screen = pygame.display.set_mode((self.SCREEN_W, self.SCREEN_H))
+
+        # transform the images to the new cell size
+        for idx in self.definitions.index:
+            img = self.definitions.loc[idx, 'Image'].copy()
+            self.definitions.loc[idx, 'Image'] = pygame \
+                .transform.scale(img, (self.CELL_W, self.CELL_H)).convert_alpha()
+        
+        #create a Surface for the grid
+        self.grid_layer = pygame.Surface((self.SIM_W, self.SIM_H)).convert()#.convert_alpha()
+        self.grid_layer.fill((255, 255, 255, 0,))
+
+        # create interface Surface        
+        self.interface = pygame.Surface((self.INTF_W, self.INTF_H)).convert()
+        self.interface.fill((0, 0, 255, 0,))
+        self.interface = pygame.Surface((self.INTF_W, self.INTF_H))
+        
+        # create a background
+        self.background = self.create_background()
+
+        # show all things
+        self.__draw_things()
+
+        # set a caption
+        caption: str = '{:s} - {:d} x {:d}' \
+                        .format(title, self.grid_size[0], self.grid_size[1])
+        pygame.display.set_caption(caption)
+
+        return
+    
+    # __init__ #
+    
+    def compute_screen_size(self, screen_size: int, grid_size: int):
+        grid_w: int = int(screen_size[0] / grid_size[0] + 0.5)
+        grid_h: int = int(screen_size[1] / grid_size[1] + 0.5)
+        self.CELL_W: int = min(grid_w, grid_h)
+        self.CELL_H: int = self.CELL_W
+        self.SIM_W: int = grid_size[0] * self.CELL_W - 1
+        self.SIM_H: int = grid_size[1] * self.CELL_H - 1
+        self.INTF_W: int = 300
+        self.INTF_H: int = self.SIM_H
+        self.SCREEN_W: int = self.SIM_W + self.INTF_W
+        self.SCREEN_H: int = self.SIM_H
+
+        return 
+    
+    # compute_screen_size #
+    
+    def get_events(self):
+        #self.direction = "X" # Equals to don't move
+        waiting = True
+        k = pygame.K_p
+        while waiting:
+            event = pygame.event.wait()
+            if event.type == pygame.KEYDOWN:
+                logger.debug(str(event))
+                if event.key == pygame.K_ESCAPE:
+                    self.game_over = True
+                    waiting = False
+                elif event.key == pygame.K_LEFT:
+                    self.grid.tracked.direction = "W"
+                    waiting = False
+                elif event.key == pygame.K_RIGHT:
+                    self.grid.tracked.direction = "E"
+                    waiting = False
+                elif event.key == pygame.K_UP:
+                    self.grid.tracked.direction = "N"
+                    waiting = False
+                elif event.key == pygame.K_DOWN:
+                    self.grid.tracked.direction = "S"
+                    waiting = False
+                elif event.key == pygame.K_p:
+                    self.grid.process_command('P', None, self.definitions)
+                elif event.key == pygame.K_MINUS:
+                    self.grid.process_command('-', None, self.definitions)
+                elif event.key == pygame.K_m:
+                    self.insert = 'm'
+                elif event.key == pygame.K_c:
+                    self.insert = 'c'
+                elif event.key == pygame.K_r:
+                    self.insert = 'r'
+                elif event.key == pygame.K_v:
+                    self.insert = 'v'
+                elif event.key == pygame.K_w:
+                    self.insert = 'w'
+                elif event.key == pygame.K_f:
+                    self.insert = 'f'
+                # if
+            
+            elif event.type == pygame.QUIT:
+                self.game_over = True
+                waiting = False
+                
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                grid_pos = self.__pixel_to_pos(event.pos)
+                logger.info('converting ' + str(event.pos) + ' to ' + str(grid_pos))
+                self.grid.process_command(self.insert, grid_pos, self.definitions)
+                
+                self.__view_update()
+                
+            # if
+                        
+        return
+
+    def move_things(self):
+        self.grid.move_things()
+        
+        return
+    
+    def show_status(self, mess: str):
+        # initialize font; must be called after 'pygame.init()' to avoid 'Font not Initialized' error
+        myfont = pygame.font.SysFont("sans", 20)
+
+        # render text
+        label = myfont.render(mess, 1, (0, 0, 0))
+        self.interface.fill((255, 255, 255))
+        self.interface.blit(label, (5, 5))
+    
+    def update_screen(self, mode="human"):
+        """ Updates all changes to the grid
+        
+        Args:
+            mode (str): "human" shows all moves directly on the screen
+            
+        Returns:
+            None
+        """
+        self.turns += 1
+                
+        self.show_status('Turn: ' + str(self.turns))
+        
+        caption = 'Turn: {:d} Energy {:.2f} - {:s}'.format(self.turns,
+                         self.grid.tracked.energy, str(self.grid.tracked.location))
+        pygame.display.set_caption(caption)
+        logger.debug ('')
+        logger.debug('*** ' + caption)
+
+        try:
+            if not self.game_over:
+                # set the background
+                self.grid_layer.blit(self.background, (0, 0))
+
+                # Draw all things
+                self.__draw_things()
+                
+                # update the screen
+                self.screen.blit(self.grid_layer, (0, 0))
+                self.screen.blit(self.interface, (self.SIM_W + 1, 0))
+
+                if mode == "human":
+                    pygame.display.flip()
+
+        except Exception as e:
+            self.game_over = True
+            self.quit_game()
+            raise e
+
+        return 
+
+    def quit_game(self):
+        """ 
+        Quits the game
+        """
+        try:
+            self.game_over = True
+            pygame.display.quit()
+            pygame.quit()
+        except Exception:
+            pass
+        
+        return
+
+    def reset_robot(self):
+        """ 
+        Resets the robot
+        """
+        self.__robot.location = self.init_pos
+        
+        return
+   
+    def print_screen():
+        
+        return
+        
+    def __draw_wall(self, layer, cell):
+        layer.blit(self.definitions["Wall"][2], (self.CELL_W * cell[0], self.CELL_H * cell[1]))
+
+    def create_background(self):
+        line_color = (0, 0, 0, 255)
+        background = pygame.Surface((self.SIM_W, self.SIM_H)).convert()
+        background.fill((255, 255, 255))
+
+        # drawing the horizontal lines
+        for y in range(self.grid.grid_size[1] + 2):
+            pygame.draw.line(background, line_color, (0, y * self.CELL_H),
+                             (self.SCREEN_W, y * self.CELL_H))
+
+        # drawing the vertical lines
+        for x in range(self.grid.grid_size[0] + 2):
+            pygame.draw.line(background, line_color, (x * self.CELL_W, 0),
+                             (x * self.CELL_W, self.SCREEN_H + self.CELL_H))
+        '''
+        # creating the walls
+        for x in range(len(self.grid.grid_cells)):
+            for y in range (len(self.grid.grid_cells[x])):
+                cell = (x, y)
+                status = self.grid.grid_cells[x, y]
+                if status == self.definitions["Wall"][0]:
+                    self.__draw_wall(background, cell)
+        '''
+        return background
+    
+    def __pixel_to_pos(self, pixel):
+        x = int(pixel[0] / self.CELL_W)
+        y = int(pixel[1] / self.CELL_H)
+        
+        logger.debug('w, h ' + str(self.grid.grid_size[0]) + ', ' + str(self.grid.grid_size[1]))
+        
+        return (x, y)
+
+    def __draw_things(self, transparency=200):
+        for key in self.grid.things_by_id.keys():
+            thing = self.grid.things_by_id[key]
+            self.__draw_bitmap(thing.type, thing.location)
+            
+        return
+    
+    def __draw_bitmap(self, cat, cell):
+        self.grid_layer.blit(self.definitions.loc[cat]['Image'], 
+                             (self.CELL_W * cell[0], self.CELL_H * cell[1]))
+    
+## Class: GridView2D ##
