@@ -2266,10 +2266,13 @@ def ga_demo_linear_regression():
     ### fitness_linreg ###
 
 
+    # using the boston housing dataset
     housing_data = pd.read_csv('/media/i-files/data/other-data/housing/housing.csv')
+
+    # eliminate the artifact that house above $500.000 are represented as $500.000
     housing_data = housing_data[housing_data['median_house_value'] < 499_000]
 
-    size = 1000
+    size = 10000
     X = np.array(housing_data['median_income'][:size])
     y = np.array(housing_data['median_house_value'][:size])
 

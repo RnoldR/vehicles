@@ -8,4 +8,49 @@ The fitness function is written by the developer.
 
 ## Kick-off - using GA's for linear regression
 
-Linear regression is the simplest form of machine learning. 
+Linear regression is the simplest form of machine learning. It is computed by y = a1 * X + a2; a1 being the slope and a2 the intercept of the regression line with the y-axis. 
+
+The example below uses the data from the **boston housing set**. We are trying to predict the  `media_house_value` (in dollars) by the `median_income` (in $ as well). We start by setting a base line using the `LinearRegression` model from sklearn.
+
+    # Assume that X and y are read as pandas DataFrame by read_csv
+    size = 10000
+    X = np.array(housing_data['median_income'][:size])
+    y = np.array(housing_data['median_house_value'][:size])
+
+    X = X.reshape(X.shape[0], 1)
+
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.33, random_state=42)
+
+    # show the shape and types of the data
+    logger.info('X_train.shape = ' + str(X_train.shape) + ' type = ' + str(X_train.dtype))
+    logger.info('y_train.shape = ' + str(y_train.shape) + ' type = ' + str(y_train.dtype))
+    logger.info('X_val.shape =   ' + str(X_val.shape) + ' type = ' + str(X_val.dtype))
+    logger.info('y_val.shape =   ' + str(y_val.shape) + ' type = ' + str(y_val.dtype))
+
+    # use LinearRegression from sklearn and fit it with the training data
+    regression_model = LinearRegression()
+    regression_model.fit(X_train, y_train)
+    
+    # get the slope and intercept
+    benchmark_a1 = regression_model.coef_[0]
+    benchmark_a2 = regression_model.intercept_
+
+    print('Coefficient (a1):', benchmark_a1)
+    print('Intercept (a2):  ', benchmark_a2)
+
+    # compute the prediction line based on the validation data
+    y_line = benchmark_a1 * X_val + benchmark_a2
+    y_val_pred = regression_model.predict(X_val)
+
+    # compute the mean absolute error
+    mae = mean_absolute_error(y_val, y_val_pred)
+    print(f'Mean absolute error model:     {mae}')
+    mae = mean_absolute_error(y_val, y_line)
+    print(f'Mean absolute error from line: {mae}')
+
+    plt.scatter(X, y)
+    plt.plot(X_train, y_line, color='r')
+    plt.plot(X_val, y_val_pred, color='k', linestyle='dashed')
+    plt.show()
+
+Leaving aside whether this is a relevant 
