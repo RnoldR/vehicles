@@ -4,10 +4,12 @@ logger = create_logger('logistic-regression-classifier.log')
 import sys
 import time
 import random
+import warnings
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+import sklearn
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
 from sklearn.linear_model import LogisticRegression
@@ -45,10 +47,10 @@ def plot(classifier, X_set, y_set):
     
     return
 
+### plot ###
+
 
 def fitness_glm(data: Data, crit: Criterion):
-    cpu = time.time()
-    
     # fetch the ML data
     X_train = data.X_train
     X_val = data.X_val
@@ -59,35 +61,49 @@ def fitness_glm(data: Data, crit: Criterion):
     C = data.data_dict['C']
     max_iter = data.data_dict['max_iter']
     
-    # Create a logistic regression classifier
-    classifier = LogisticRegression(C=C, max_iter=max_iter)
-    classifier.fit(X_train, y_train)
-    
-    y_pred = classifier.predict(X_val)
+    # intercept warnings when they accur and handle accordingly
+    with warnings.catch_warnings(record=True) as w:
+        # Cause all warnings to always be triggered.
+        warnings.simplefilter("always")
 
-    cpu = time.time() - cpu
+        # Create a logistic regression classifier
+        classifier = LogisticRegression(C=C, max_iter=max_iter)#, solver='saga')
+        classifier.fit(X_train, y_train)
     
-    val_acc = accuracy_score(y_val, y_pred, normalize=True)
-    val_f1 = f1_score(y_val, y_pred, average='weighted')
+    # if a warning occurs the result is useless, the phenotype
+    # is dead on arraival (DoA)
+    try:
+        warn = w[-1].category
+        logger.debug('*** Warning occurred: ', w[-1].category)    
+
+        if warn is sklearn.exceptions.ConvergenceWarning:
+            logger.debug('*** Convergence warning')
+
+        logger.debug(w[-1].message)
+
+        logger.info('Dead on Arrival')
+
+        return None
+
+    # Exception, no category = no warning = ok
+    except:
+        # No warning occurred, the phenotype is usable
+        y_pred = classifier.predict(X_val)
+
+        val_acc = accuracy_score(y_val, y_pred, normalize=True)
+        val_f1 = f1_score(y_val, y_pred, average='weighted')
+
+        logger.info(f'Ok val_acc {val_acc:.2f}, val_f1 {val_f1:.2f}')
+
+    # try..except
 
     return {'val_acc': val_acc,
             'val_f1': val_f1}
 
-
-def pretest(Cs):
-    ##### test #####
-    for c in Cs:
-        classifier = LogisticRegression(C=c)
-        classifier.fit(X_train, y_train)
-        y_pred = classifier.predict(X_val)
-        val_acc = accuracy_score(y_val, y_pred, normalize=True)
-        val_f1 = f1_score(y_val, y_pred, average='weighted')
-        logger.info(f'Test for C = {c}: acc {val_acc}, F1 {val_f1}')
-
-    return
+### fitness_glm ###
 
 
-def classify_adv(fitnesses, criterion):
+def classify_adv(iterations, fitnesses, criterion):
     # load a simple data set
     dataset = pd.read_csv('../data/Social_Network_Ads.csv')
 
@@ -100,7 +116,8 @@ def classify_adv(fitnesses, criterion):
     y = dataset.iloc[:, 4].values
 
     # split in training and test set
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size = 0.25, 
+    X_train, X_val, y_train, y_val = train_test_split(X, y, 
+                                                      test_size = 0.25, 
                                                       random_state = seed)
 
     # Rescale the predictors for better performance
@@ -122,35 +139,60 @@ def classify_adv(fitnesses, criterion):
     data.register_variable('C', c)
     data.register_variable('max_iter', max_iter)
 
-    fitness = fitness_glm(data, criterion)
-    logger.info('validation accuracy: {:.2f}'.format(fitness['val_acc']))
-    logger.info('validation F1:       {:.2f}'.format(fitness['val_f1']))
+    #fitness = fitness_glm(data, criterion)
+    #logger.info('validation accuracy: {:.2f}'.format(fitness['val_acc']))
+    #logger.info('validation F1:       {:.2f}'.format(fitness['val_f1']))
 
-    pop = Population(p_mutation=0.2, 
+    kick = {'generation': 10,
+            'trigger': 0.01,
+            'keep': 1,
+            'p_mutation': 0.25,
+            'p_crossover': 10,
+           }
+
+    pop = Population(p_mutation=0.02, 
                      p_crossover=2, # > 1 means absolute # of crossovers 
                      fitness=fitnesses, 
-                     selection_key=criterion.selection_key)
+                     selection_key=criterion.selection_key,
+                     kick = kick,
+                     keep = 5,
+                     best_of = 0,
+                     random_state = 42,
+                    )
 
     pop.add_var_float('C', 32, 0.0001, 0.5)    
     pop.set_fitness_function(fitness_glm, data)
-    pop.create_population(10)
+    pop.create_population(10, criterion)
 
-    logger.warning('')
-    logger.warning('--- Generation 0 ---')
-    pop.pre_compute(criterion)
-    pop.show()
+    logger.info('')
+    logger.info('--- Generation 0 ---')
+    #pop.pre_compute(criterion)
+    pop.show(show_bits=False)
 
-    for generation in range(1, 2):
-        logger.warning('')
-        logger.warning('*** Generation ' + str(generation))
+    for generation in range(1, iterations + 1):
+        logger.info('')
+        logger.info('*** Generation ' + str(generation))
         pop.next_generation(10, criterion)
         pop.show()
     # for
 
-    return    
+    gens, tops = pop.statistics(criterion.selection_key, 'top')
+    gens, means = pop.statistics(criterion.selection_key, 'mean')
+    gens, sds = pop.statistics(criterion.selection_key, 's.d.')
+
+    plt.plot(gens, tops, color='g', label='top')
+    plt.plot(gens, means, color='r', label='mean')
+    plt.plot(gens, sds, color='b', label='sd')
+    plt.title(criterion.selection_key)
+    plt.legend()
+    pop.show(show_bits=False)
+
+    return
+
+### classify_adv ###
 
 
-def classify_mnist(fitnesses, criterion):
+def classify_mnist(iterations, fitnesses, criterion):
     from tensorflow.keras.datasets import mnist
 
     # load mnist data set
@@ -176,41 +218,71 @@ def classify_mnist(fitnesses, criterion):
     logger.info('y_val.shape =   ' + str(y_val.shape) + 'type = ' + str(y_val.dtype))
 
     # set parameter for log regression
-    c = 0.01
+    c = 1
     max_iter = 1000
     data = Data(X_train, X_val, None, y_train, y_val, None)
     data.register_variable('C', c)
     data.register_variable('max_iter', max_iter)
 
-    fitness = fitness_glm(data, criterion)
-    logger.info('validation accuracy: {:.2f}'.format(fitness['val_acc']))
-    logger.info('validation F1:       {:.2f}'.format(fitness['val_f1']))
+    #fitness = fitness_glm(data, criterion)
+    #logger.info('validation accuracy: {:.2f}'.format(fitness['val_acc']))
+    #logger.info('validation F1:       {:.2f}'.format(fitness['val_f1']))
 
-    pop = Population(p_mutation=0.2, 
+    kick = {'generation': 10,
+            'trigger': 0.01,
+            'keep': 1,
+            'p_mutation': 0.25,
+            'p_crossover': 10,
+           }
+
+    pop = Population(p_mutation=0.02, 
                      p_crossover=2, # > 1 means absolute # of crossovers 
                      fitness=fitnesses, 
-                     selection_key=criterion.selection_key)
+                     selection_key=criterion.selection_key,
+                     kick = kick,
+                     keep = 5,
+                     best_of = 0,
+                     random_state = 42,
+                    )
 
-    pop.add_var_float('C', 32, 0.0001, 0.5)    
+    pop.add_var_float('C', 32, 0.01, 10)    
     pop.set_fitness_function(fitness_glm, data)
-    pop.create_population(10)
 
-    logger.warning('')
-    logger.warning('--- Generation 0 ---')
+    initial_population: int = 10
+    logger.info(f'Creating an initial population of size {initial_population}. This may take quite some time')
+    pop.create_population(initial_population, criterion)
+
+    logger.info('')
+    logger.info('--- Ivitial Generation ---')
     pop.pre_compute(criterion)
     pop.show()
 
-    for generation in range(1, 2):
-        logger.warning('')
-        logger.warning('*** Generation ' + str(generation))
+    for generation in range(1, iterations + 1):
+        logger.info('')
+        logger.info('*** Generation ' + str(generation))
         pop.next_generation(10, criterion)
         pop.show()
+    # for
       
+    gens, tops = pop.statistics(criterion.selection_key, 'top')
+    gens, means = pop.statistics(criterion.selection_key, 'mean')
+    gens, sds = pop.statistics(criterion.selection_key, 's.d.')
+
+    plt.plot(gens, tops, color='g', label='top')
+    plt.plot(gens, means, color='r', label='mean')
+    plt.plot(gens, sds, color='b', label='sd')
+    plt.title(criterion.selection_key)
+    plt.legend()
+    plt.show()
+
     return
 
+### classify_mnist ###
 
-fitnesses = ['cpu', 'val_acc', 'acc/cpu'] # 'val_acc', 'val_f1', 'f1/cpu']
-criterion = Criterion(fitnesses[2], 'le', 1.0)
+
+iters = 20
+fitnesses = ['cpu', 'val_f1', 'f1/cpu', 'doa'] 
+criterion = Criterion(fitnesses, fitnesses[1], 'le', 1.0)
 
 if __name__ == "__main__":
     logger.info(' ')
@@ -219,4 +291,5 @@ if __name__ == "__main__":
     seed = 42
     random.seed(seed)
 
-    classify_adv(fitnesses, criterion)
+    #classify_adv(iters, fitnesses, criterion)
+    classify_mnist(iters, fitnesses, criterion)

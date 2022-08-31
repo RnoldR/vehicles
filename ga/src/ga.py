@@ -38,6 +38,10 @@ TYPE_SCALAR = 'scalar'
 TYPE_ARRAY = 'array'
 TYPE_VAR_ARRAY = 'variable array'
 
+METHOD_ELITE = 'elite'
+METHOD_ROULETTE = 'roulette wheel'
+METHOD_RANDOM = 'random'
+
 """
 integers are always in the range 0..2^BITLEN. That is not always 
 desired when the maximum is not an exact power of 2. When setiing
@@ -149,26 +153,42 @@ class GA(object):
 
         def format_create(var_name, min, max, cat):
             if max <= 0:
-                max = 5
-
+                max = 1
             else:
                 max = int(log10(max))
-
-            if max < 5:
-                max = 5
+            # if
 
             if cat == 'I':
+                if max < 5:
+                    max = 5
+
                 format_string = '{:' + str(max) + 'd} '
 
             elif cat == 'S':
+                if max < 5:
+                    max = 5
+
                 format_string = '{:' + str(max) + 's} '
 
             elif cat == 'F':
-                max += 3
-                format_string = '{:' + str(max) + '.2f} '
+                fraction = 0
+                if max < 1:
+                    fraction = 6
+                elif max < 2:
+                    fraction = 4
+                elif max < 3:
+                    fraction = 2
+                else:
+                    fraction = 0
+                # if
+
+                max = max + 1 + fraction
+                format_string = ' {:' + str(max) + '.' + str(fraction) + 'f}'
 
             else:
-                raise ValueError(f'Invalid catagorye: {cat} for variable "{var_name}"')
+                message = f'*** Invalid catagorye: {cat} for variable "{var_name}"'
+                logger.critical(message)
+                raise ValueError(message)
 
             # if
 
@@ -218,15 +238,21 @@ class GA(object):
 
         # a name should be specified
         if len(name) < 1:
-            raise ValueError(f'A variable name must be specified: "{name}"')
+            message = f'*** A variable name must be specified: "{name}"'
+            logger.critical(message)
+            raise ValueError(message)
 
         # bit_len must by 1 or more
         if bit_len < 1:
-            raise ValueError(f'bit_len of array variable "{name}" should be at least 1')
+            message = f'*** bit_len of array variable "{name}" should be at least 1'
+            logger.critical(message)
+            raise ValueError(message)
 
         # max should be larger than min
         if mx <= mn:
-            raise ValueError(f'maximum variable "{name}" should be larger than min')
+            message = f'*** maximum variable "{name}" should be larger than min'
+            logger.critical(message)
+            raise ValueError(message)
 
         if isinstance(length, str) and var_type == TYPE_ARRAY:
             var_type = TYPE_VAR_ARRAY
@@ -253,10 +279,14 @@ class GA(object):
 
         elif var_type == TYPE_ARRAY:
             if not isinstance(length, int):
-                raise ValueError(f'Array variable "{name}" must have an integer length: {length}')
+                message = f'*** Array variable "{name}" must have an integer length: {length}'
+                logger.critical(message)
+                raise ValueError(message)
 
             if length < 1:
-                raise ValueError(f'Length of array variable "{name}" should be at least 1 instead of {length}')
+                message = f'*** Length of array variable "{name}" should be at least 1 instead of {length}'
+                logger.critical(message)
+                raise ValueError(message)
 
             max_length = length
 
@@ -279,14 +309,18 @@ class GA(object):
                     variable = self.dna[length]
 
                     if round(variable[MIN]) < 0:
-                        raise ValueError(f'Minimum length for variable array "{name}" length '
-                                         f'variable "{variable[NAME]} should be zero or larger')
+                        message = f'*** Minimum length for variable array "{name}" length ' \
+                                  f'variable "{variable[NAME]} should be zero or larger'
+                        logger.critical(message)
+                        raise ValueError(message)
                     
                     if max_length is None:
                         max_length = round(variable[MAX])
 
             if max_length is None or max_length < 1:
-                raise ValueError(f'max_length for "{name}" should be specified and > 0 for variable array')
+                message = f'*** max_length for "{name}" should be specified and > 0 for variable array'
+                logger.critical(message)
+                raise ValueError(message)
 
             if value_list is None:
                 format_string, header_string = format_create(name, mn, mx, category)
@@ -301,7 +335,9 @@ class GA(object):
 
 
         else:
-            raise ValueError (f'Illegal variable type for variable "{name}": {var_type}')
+            message = f'*** Illegal variable type for variable "{name}": {var_type}'
+            logger.critical(message)
+            raise ValueError(message)
 
         # only accept variable when its name is not present
         if name not in self.dna:
@@ -340,7 +376,9 @@ class GA(object):
 
         # Variable name alreay exists, raise exception
         else:
-            raise ValueError(f'Variable name {name} already exists')
+            message = f'*** Variable name {name} already exists'
+            logger.critical(message)
+            raise ValueError(message)
             
         return
     
@@ -363,7 +401,9 @@ class GA(object):
         
         # perform checks
         if value < variable[MIN] or value >= variable[MAX]:
-            raise ValueError(f'value {value:d} should be >= {variable[MIN]:d} or < {variable[MAX]:d}')
+            message = f'value {value:d} should be >= {variable[MIN]:d} or < {variable[MAX]:d}'
+            logger.critical(message)
+            raise ValueError(message)
         
         # fetch its location on the dna
         start = variable[BITPOS]
@@ -385,7 +425,9 @@ class GA(object):
         
         # perform checks
         if value < variable[MIN] or value >= variable[MAX]:
-            raise ValueError(f'value should be >= {variable[MIN]:f} or < {variable[MAX]:f}')
+            message = f'*** Value should be >= {variable[MIN]:f} or < {variable[MAX]:f}'
+            logger.critical(message)
+            raise ValueError(message)
         
         # fetch its location on the dna
         start = variable[BITPOS]
@@ -411,7 +453,9 @@ class GA(object):
 
             # perform checks
             if value < variable[MIN] or value >= variable[MAX]:
-                raise ValueError(f'value {value} should be >= {variable[MIN]} or < {variable[MAX]}')
+                message = f'value {value} should be >= {variable[MIN]} or < {variable[MAX]}'
+                logger.critical(message)
+                raise ValueError(message)
             
             # fetch its location on the dna
             start = variable[BITPOS] + idx * variable[BITLEN]
@@ -488,14 +532,20 @@ class GA(object):
         # check array index
         if variable[TYPE] in [TYPE_SCALAR]:
             if index != 0:
-                raise ValueError(f'Index of scalar or list "{name}" should be zero')
+                message = f'*** Index of scalar or list "{name}" should be zero'
+                logger.critical(message)
+                raise ValueError(message)
 
         elif variable[TYPE] in [TYPE_ARRAY, TYPE_VAR_ARRAY]:
             if index < 0 or index >= variable[MAXLENGTH]:
-                raise ValueError(f'Index of array {name} should be range [0-{variable[MAXLENGTH]}], is: {index}')
+                message = f'*** Index of array {name} should be range [0-{variable[MAXLENGTH]}], is: {index}'
+                logger.critical(message)
+                raise ValueError(message)
 
         else:
-            raise ValueError(f'Unknown type ({variable[TYPE]} for variable "{name}"')
+            message = f'*** Unknown type ({variable[TYPE]} for variable "{name}"'
+            logger.critical(message)
+            raise ValueError(message)
 
         # if
         
@@ -534,7 +584,9 @@ class GA(object):
                     var = random.randint(0, max)
 
                 else:
-                    raise ValueError(f'Illegal variable[EXTRA] option: "{variable[EXTRA]}"')
+                    message = f'Illegal variable[EXTRA] option: "{variable[EXTRA]}"'
+                    logger.critical(message)
+                    raise ValueError(message)
                 # if
 
             if variable[LIST] is None:
@@ -545,7 +597,9 @@ class GA(object):
             return result
         
         else:
-            raise ValueError(f'Unknown category: "' + variable[CATEGORY] + '"')
+            message = f'Unknown category: "' + variable[CATEGORY] + '"'
+            logger.critical(message)
+            raise ValueError(message)
             
             return None # else as floating point number
         
@@ -859,6 +913,17 @@ class GaData(object):
         return
     
     ### set_datasets ###
+
+    def register(self, vars: dict):
+        for key in vars:
+            value = vars[key]
+            self.register_variable(key, value)
+
+        # for
+
+        return
+
+    ### register ###
     
     def register_variable(self, name: str, value):
         self.data_dict[name] = value
@@ -871,7 +936,8 @@ class GaData(object):
 
 
 class Criterion():
-    def __init__(self, key, comparison, value):
+    def __init__(self, fitnesses, key, comparison, value):
+        self.fitnesses = fitnesses
         self.selection_key = key
         self.selection_comp = comparison
         self.selection_value = value
@@ -879,7 +945,7 @@ class Criterion():
         return
         
     ### __init__ ###
-    
+
 ### Class: Criterion ###
     
     
@@ -887,13 +953,24 @@ class Population(object):
 
     generation_seq: int = 0
 
-    def __init__(self, p_mutation=0.1, p_crossover=1, fitness=[], 
-                 selection_key: str='cpu'):
+    def __init__(self, 
+                 p_mutation = 0.1, 
+                 p_crossover = 1, 
+                 fitness = [], 
+                 selection_key: str = 'cpu',
+                 method = METHOD_ELITE,
+                 kick = None,
+                 best_of = 0,
+                 keep = 0,
+                 random_state = None,
+                ):
         
         self.data = GaData()
         self.size = 0
         self.template = GA()
         self.population = []
+        self.population_size = -1
+        self.method = method
         self.ff = None
         self.fitness_function = None
         self.fitness_data = None
@@ -901,17 +978,25 @@ class Population(object):
         self.p_mutation = p_mutation
         self.p_crossover = p_crossover
         self.selection_key = selection_key
+        self.kick = kick
+        self.kick_count = 0
         self.template.fitness_list = [x for x in fitness]
-        #self.template.fitness_list = [x[0] for x in fitness]
-        #self.template.fitness_list.insert(0, 'cpu')
+        self.n_best_of: int = best_of
+        self.the_best_of = {}
+        self.keep = keep
+        self.generations = {}
+        self.random_state = random_state
+        self.max_trials = 10
+        self.total_cpu = 0
 
+        if random_state is not None:
+            random.seed(random_state)
+            np.random.seed(random_state)
+        
         self.template.fitness_dict = {}
         for key in self.template.fitness_list:
             self.template.fitness_dict[key] = 0
 
-        self.n_best_of: int = 0
-        self.the_best_of = {}
-        
         return
     
     ### __init__ ###
@@ -919,7 +1004,11 @@ class Population(object):
     def add_var_int(self, name: str, mn: int=None, mx: int=None, value_list=None):
         if value_list is None:
             if mn is None or mx is None:
-                raise ValueError(f'Minimum and maximum should be supplied for variable "{name}"')
+                message = f'*** Minimum and maximum should be supplied for variable "{name}"'
+                logger.critical(message)
+                raise ValueError(message)
+            # if
+
         else:
             mn = 0
             mx = len(value_list)
@@ -945,7 +1034,9 @@ class Population(object):
     def add_var_int_array(self, name: str, mn: int=None, mx: int=None, length: int=None, value_list=None):
         if value_list is None:
             if mn is None or mx is None:
-                raise ValueError(f'Minimum and maximum should be supplied for in array "{name}"')
+                message = f'*** Minimum and maximum should be supplied for in array "{name}"'
+                logger.critical(message)
+                raise ValueError(message)
         else:
             mn = 0
             mx = len(value_list)
@@ -954,7 +1045,9 @@ class Population(object):
 
         range = mx - mn
         if length == None:
-            raise ValueError('No length specified for int array "{name}"')
+            message = '*** No length specified for int array "{name}"'
+            logger.critical(message)
+            raise ValueError(message)
 
         self.template.add_var(name, range.bit_length(), 'I', mn, mx, TYPE_ARRAY, length, value_list=value_list)
         
@@ -995,16 +1088,48 @@ class Population(object):
     ### set_var_int_array ###
     
     
-    def create_population(self, size: int):
+    def create_population(self, size: int, criterion: Criterion):
+        self.population = []
+        self.population_size = size
         self.generation_seq = 0
+        doa = 0
+        doa_list = []
 
-        for i in range(size):
+        cpu = time.time()
+        i = 0
+        while i < size:
             ga = GA(self.template)
             ga.randomize()
             ga.generation = self.generation_seq
-            self.population.append(ga)
+
+            fitness = self.get_fitness(ga, criterion)
+
+            # when fitness is None, the GA is dead on arrival, not appended to population
+            if fitness is None:
+                doa += 1
+                doa_list.append(ga.bits)
+
+            else:
+                ga.rejects_doa = doa
+                ga.rejects_doa_list.append(doa_list)
+
+                doa = 0
+                doa_list = []
+
+                self.population.append(ga)   
+
+                i += 1
+
+            # if
+
+        # while
+
+        self.get_fitnesses(self.population, criterion)
+
+        self.total_cpu = time.time() - cpu
             
         return
+        
     
     ### create_population ###
     
@@ -1025,8 +1150,221 @@ class Population(object):
     
     ### create_randomized_child ###
         
+
+    def evaluate_progress(self, crit: Criterion):
+        trigger = False
+
+        if len(self.generations) > 2:
+            fitness = crit.selection_key
+            _, means = self.statistics(fitness, 'mean')
+            m1 = means[-1]
+            m2 = means[-2]
+
+            try:
+                delta = abs(m2 - m1) / m1
+            except:
+                delta = 0
+            # try..except
+
+            if self.kick is not None:
+                trigger = delta < self.kick['trigger'] and \
+                          self.generation_seq > self.kick['generation']
+
+            #logger.info(f'Delta change is {delta}, trigger is {trigger}')
+
+        # if
+
+        return trigger
+
+    ### evaluate_progress ###
+
+
+    def get_fitness(self, ga, criterion):
+        # build a dictionary of ga.id and fitness
+        fitnesses = {}
+        if self.ff is not None:
+            fitness = self.eval_fitness_string(ga)
+
+        elif self.fitness_function is not None:
+            fitness = self.eval_fitness_function(ga, criterion)
+
+        else:
+            message = '*** get_fitnesses: ff and fitnes_function are None'
+            logger.critical(message)
+            raise ValueError(message)
+
+        # if
+        
+        # test whether the fenotype is fit, None is not fit
+        if fitness is None:
+
+            # Not fit individual, all fitnesses are set to None
+            for key in ga.fitness_list:
+                ga.fitness_dict[key] = None
+            # for
+
+            return None
+
+        else:
+            for key in ga.fitness_list: #@@@ fitness_list hoort niet in GA
+                ga.fitness_dict[key] = fitness[key]
+            # for
+
+            return ga.fitness_dict
+
+        #fitnesses[ga.id] = ga.fitness_dict
+
+        #fitness_keys = [key for key in fitness]
+
+    ### get_fitness ###
+
+
+    def method_roulette_wheel(self, new_population, p_mutation, p_crossover, keep: int, criterion: Criterion):
+
+        df_pop = self.get_pop_as_df()
+        fit_key = criterion.selection_key
+        weight_key = '*weights*'
+
+        # fitness values descending, largest first
+        if criterion.selection_comp == 'ge':
+            df_pop[weight_key] = df_pop[fit_key]
+
+        elif criterion.selection_comp == 'le':
+            df_pop[weight_key] = df_pop[fit_key].max() - df_pop[fit_key]
+
+        # if
+
+        while len(new_population) < self.population_size:
+            ga_1 = random.choices(self.population, weights=df_pop[weight_key])[0]
+            ga_2 = random.choices(self.population, weights=df_pop[weight_key])[0]
+            children = ga_1.mate(ga_2, p_mutation, p_crossover)
+
+            for child in children:
+                # check the fitness of the child
+                fitness = self.get_fitness(child, criterion)
+
+                if fitness is not None:
+                    # Child is fit, add to new_population
+                    child.generation = self.generation_seq
+                    new_population.append(child)
+
+                else:
+                    # Child is not fit, not accepted into the new population
+                    logger.debug(f'Child {child.id} was dead on arrival.')
+
+                # if
+            # for
+        # while
+
+        # get a selection of the new population based on population parameters
+        self.population = self.select(new_population, self.population_size, criterion)
+
+        return new_population
+
+    ### method_roulette_wheel ###
+
+        
+    def method_elite(self, new_population, p_mutation, p_crossover, keep: int, criterion: Criterion):
+        """
+        Mates all GA's with each other and creates a new population based on the 
+        self.population_size of the  offspring. 
+        
+        Args:
+            selection_size (int): Number of best fitted individuals 
+                to be selected
+        """
+
+        n_expected: int = keep
+        # iterate over all Ga's
+        for ga_1 in self.population:
             
-    def next_generation(self, selection_size: int, crit: Criterion):
+            # iterate over all GA's
+            for ga_2 in self.population:
+                # when both GA's are not identical, mate and get their children
+                children = ga_1.mate(ga_2, p_mutation, p_crossover)
+
+                for child in children:
+                    n_expected += 1
+
+                    # check the fitness of the child
+                    fitness = self.get_fitness(child, criterion)
+
+                    if fitness is not None:
+                        # Child is fit, add to new_population
+                        child.generation = self.generation_seq
+                        new_population.append(child)
+
+                    else:
+                        # Child is not fit, not accepted into the new population
+                        logger.debug(f'Child {child.id} was dead on arrival.')
+
+                    # if
+                # for
+            # for
+        # for
+
+        logger.debug('next_generation: {n_expected} children expected')
+        if len(new_population) == 0:
+            # no new population has been created, proceeding is useless
+
+            message = f'The new population is empty while {n_expected} were expected. ' \
+                       'Please check the logs and try again.'
+            logger.critical(message)
+            raise ValueError(message)
+
+        elif len(new_population) < n_expected:
+            delta = n_expected - len(new_population)
+            n_max = delta * self.max_trials
+            logger.info(f'next_generation: expected {n_expected} individuals, found {len(new_population)}. '
+                        f'Randomly trying to catch up in maximal {n_max} trials.')
+
+            trial = 0
+            doa = 1
+            while trial < n_max and len(new_population) < n_expected:
+                n1 = random.randint(0, len(self.population) - 1)
+                n2 = random.randint(0, len(self.population) - 1)
+                ga_1 = self.population[n1]
+                ga_2 = self.population[n2]
+
+                children = ga_1.mate(ga_2, p_mutation, p_crossover)
+
+                for child in children:
+                    # check the fitness of the child
+                    fitness = self.get_fitness(child, criterion)
+
+                    if len(new_population) < n_expected and fitness is not None:
+                        # Child is fit, add to new_population
+                        child.generation = self.generation_seq
+                        child.rejects_doa = doa
+                        doa = 1
+                        new_population.append(child)
+
+                    else:
+                        # Child i not fit, not accepted into the new population
+                        logger.debug(f'Child {child.id} was dead on arrival (DoA).')
+                        doa += 1
+
+                    # if
+                # for
+
+                trial += 1
+
+            # while
+
+            logger.info(f'Catching up: expected {n_expected} individuals, found {len(new_population)}.')
+
+        else:
+            pass # ok
+        
+        # get a selection of the new population based on population parameters
+        self.population = self.select(new_population, self.population_size, criterion)
+
+        return new_population
+    
+    ### method_elite ###
+
+
+    def next_generation(self, selection_size: int, criterion: Criterion):
         """
         Mates all GA's with each other and creates a new
         population based on the offspring. 
@@ -1035,117 +1373,172 @@ class Population(object):
             selection_size (int): Number of best fitted individuals 
                 to be selected
         """
+        cpu = time.time()
 
         self.generation_seq += 1
 
         np.seterr(all='raise')
         new_population: list = []
 
-        # iterate over all Ga's
-        for ga_1 in self.population:
-            
-            # iterate over all GA's
-            for ga_2 in self.population:
-                # when both GA's are not identical, mate and get their children
-                if ga_1.id != ga_2.id:
-                    children = ga_1.mate(ga_2, self.p_mutation, self.p_crossover)
+        if self.evaluate_progress(criterion):
+            # if maximum # of kick is reached
+            if self.kick_count == self.kick['max_kicks']:
+                # yes, no more iterations to perform
+                return False
 
-                    for child in children:
-                        child.generation = self.generation_seq
-                        new_population.append(child)
-                    # for
-                # if
-            # for
+            else:
+                # no, increase the kick_count
+                self.kick_count += 1
+
+            # if
+
+            p_mutation = self.kick['p_mutation']
+            p_crossover = self.kick['p_crossover']
+            keep: int = self.kick['keep']
+
+        else:
+            p_mutation = self.p_mutation
+            p_crossover = self.p_crossover
+            keep: int = self.keep
+
+        # if
+
+        for i in range(keep):
+            ga = self.population[i]
+            new_population.append(ga)
+
         # for
-        
-        # keep the best n individuals from current population
-        if self.n_best_of > 0:
-            for i in range(self.n_best_of):
-                ga = self.population[i]
-                self.the_best_off[ga.id] = ga
-        
-        # get a selection of the new population based on population parameters
-        self.population = self.select(new_population, selection_size, crit)
 
-        return
-    
+        logger.info('')
+        logger.info(f'=== Generation {self.generation_seq}, method used is: {self.method}, mutation = {p_mutation}, '
+                    f'cross-over = {p_crossover}, keep = {keep} ===')
+
+        if self.method == METHOD_ELITE:
+            new_population = self.method_elite(new_population, 
+                                               p_mutation = p_mutation, 
+                                               p_crossover = p_crossover, 
+                                               keep = keep, 
+                                               criterion = criterion,
+                                              )
+
+        elif self.method == METHOD_ROULETTE:
+            new_population = self.method_roulette_wheel(new_population, 
+                                                        p_mutation = p_mutation, 
+                                                        p_crossover = p_crossover, 
+                                                        keep = keep, 
+                                                        criterion = criterion,
+                                                       )
+
+        else:
+            message = f'Unknown selection method: {self.method}'
+            logger.critical(message)
+            raise ValueError(message)
+
+        # if
+
+        self.total_cpu = time.time() - cpu
+
+        return True
+
     ### next_generation ###
+
+
+    def statistics(self, var: str, stat: str):
+        stat_list = []
+        gen_list = []
+        for gen in self.generations:
+            stats = self.generations[gen]
+            fitness = stats[var]
+            statistic = fitness[stat]
+
+            gen_list.append(gen)
+            stat_list.append(statistic)
+        # for
+
+        return gen_list, stat_list
+
+    ### compute_generation_statistics ###
     
     
-    def pre_compute(self, crit: Criterion):
+    def pre_compute(self, criterion: Criterion):
         """
         When a population is initially created the fitness of each 
         GA is not yet known. All fitness is listed as 0 when show()
         is called. pre_compute computes the fitness of each GA in 
         the population. 
         """
-        self.get_fitnesses(self.population, crit)
+        for ga in self.population:
+            fitness = self.get_fitness(ga, criterion)
+
+        # for
+        
+        self.get_fitnesses(self.population, criterion)
         
         return
     ### compute_fitnesses ###
     
             
-    def get_fitnesses(self, new_population, crit: Criterion):
-        
+    def get_fitnesses(self, new_population, criterion: Criterion):
         # build a dictionary of ga.id and fitness
         fitnesses = {}
         for ga in new_population:
-            cpu = time.time()
-            if self.ff is not None:
-                fitness = self.eval_fitness_string(ga)
+            fitness = ga.fitness_dict
+            fitness['doa'] = ga.rejects_doa
+            fitnesses[ga.id] = ga.fitness_dict
+        # for
 
-            elif self.fitness_function is not None:
-                fitness = self.eval_fitness_function(ga, crit)
+        fitness_keys = [key for key in fitness]
+        
+        # create a pandas dataframe from dictionary
+        df = pd.DataFrame.from_dict(fitnesses, orient='index',
+                                    columns = fitness_keys) # self.template.fitness_list)
 
-            else:
-                raise ValueError('get_fitnesses: ff and fitnes_function are None')
-            # if
-            
-            for key in ga.fitness_list:
-                ga.fitness_dict[key] = fitness[key]
-            # for
-                
-            fitnesses[ga.id] = fitness
+        # compute generation statistics for each fitness
+        fit_stats = {}
+        for fit in fitness_keys:
+            fit_stats[fit] = {'n': df[fit].count(),
+                              'top' : df.iloc[0][fit],
+                              'mean': df[fit].mean(),
+                              's.d.': df[fit].std()}
         # for
         
-        # if no selection_key, return None
-        if crit.selection_key is None:
-            df = None
-        
-        # else create dataframe, sort on selection_key and return it
+        # add statistics to this generation
+        self.generations[self.generation_seq] = fit_stats
+
+        # add the ga's to the fitness dataframe
+        ga_dict = {ga.id: ga for ga in new_population}
+        for idx in df.index:
+            ga = ga_dict[idx]
+            df.loc[idx, 'GA'] = ga
+        # for            
+
+        # sort the dataframe on the selection_key
+        if criterion.selection_comp == 'ge':
+            df = df.sort_values(criterion.selection_key, ascending=False)
+
+        elif criterion.selection_comp == 'le':
+            df = df.sort_values(criterion.selection_key, ascending=True)
+
+        elif criterion.selection_comp == 'eq':
+            df[criterion.selection_key] = abs(df[criterion.selection_key] - 
+                                            criterion.selection_value)
+            df = df.sort_values(criterion.selection_key, ascending=True)
+
         else:
+            error = '*** ga.get_fitnesses: expected "ge", "le" or "eq" ' \
+                    f'for select_comparison, got "{criterion.selection_comp}".'
+            logger.critical(error)
+            raise ValueError(error)
+
+        # if             
+
+        logger.debug("get_fitnesses: Fitness of GA's")
+        for index, row in df.iterrows():
+            logger.debug(str(index) + ': ' + str(row))
+        # for
             
-            # create a pandas dataframe from dictionary
-            df = pd.DataFrame.from_dict(fitnesses, orient='index',
-                                        columns = self.template.fitness_list)
-            
-            # sort the dataframe on the selection_key
-            if crit.selection_comp == 'ge':
-                df = df.sort_values(crit.selection_key, ascending=False)
-
-            elif crit.selection_comp == 'le':
-                df = df.sort_values(crit.selection_key, ascending=True)
-
-            elif crit.selection_comp == 'eq':
-                df[crit.selection_key] = abs(df[crit.selection_key] - 
-                                             crit.selection_value)
-                df = df.sort_values(crit.selection_key, ascending=True)
-
-            else:
-                error = '*** ga.get_fitnesses: expected "ge", "le" or "eq" ' \
-                        f'for select_comparison, got "{crit.selection_comp}".'
-                        
-                raise ValueError(error)
-            # if             
-    
-            logger.debug("get_fitnesses: Fitness of GA's")
-            for index, row in df.iterrows():
-                logger.debug(str(index) + ': ' + str(row))
-            # for
-        # if
-                
         return df
-    
+
     ### get_fitnesses ###
     
     
@@ -1156,10 +1549,11 @@ class Population(object):
         # get fitnesses and sort by selection_key
         sorted_fitnesses = self.get_fitnesses(new_population, crit)
         
-        # sample the first <selection_size> into a new population
+        # sample the first <selection_size> into a new population pop
         pop = []
-        for idx, row in sorted_fitnesses.iterrows():
-            ga = ga_dict[idx]
+
+        for idx in sorted_fitnesses.index:
+            ga = sorted_fitnesses.loc[idx, 'GA'] 
             pop.append(ga)
             if len(pop) >= selection_size:
                 break
@@ -1245,18 +1639,30 @@ class Population(object):
         fitness = self.fitness_function(self.fitness_data, crit)
         cpu = time.time() - cpu
 
-        # add for each fitness the fitness / cpu time as extra fitness measure
-        # also add cpu
-        result = {}
-        for fit in fitness:
-            result[fit] = fitness[fit]
-            parts = fit.split('_')
-            cpu_part = parts[-1] + '/cpu'
-            result[cpu_part] = fitness[fit] / cpu
+        # when the fitness function returns None, the ga is not fit
+        if fitness is None:
+            return None
 
-        result['cpu'] = cpu
+        # Fitness is not None, GA is viable
+        else:
+            # add for each fitness the fitness / cpu time as extra fitness measure
+            # also add cpu
 
-        return result
+            result = {}
+            for fit in fitness:
+                result[fit] = fitness[fit]
+                parts = fit.split('_')
+                cpu_part = parts[-1] + '/cpu'
+                result[cpu_part] = fitness[fit] / cpu
+            # for
+
+            # add special "fitness" variables
+            result['doa'] = None
+            result['cpu'] = cpu
+
+            return result
+
+        # if
     
     ### eval_fitness_function ###
     
@@ -1324,11 +1730,11 @@ class Population(object):
                 l.append(ga.fitness_dict[key])
                 
             fit_dict[ga.id] = l
-            
+
+        # Create dataframe from fitness dictionary    
         df = pd.DataFrame.from_dict(fit_dict, orient='index', 
                                     columns=self.template.fitness_list)
 
-        
         return df
 
     ### get_pop_as_df ###
@@ -1353,42 +1759,81 @@ class Population(object):
     ### show_variables ###
 
 
-    def show(self):
+    def show(self, show_bits=True):
+        # define width of a fitness field
+        width = 8
+
+        # let numpy crash when fp over/underflow occurs
         np.seterr(all='raise')
+
+        # create a dataframe from the current population
         df = self.get_pop_as_df()
+
         if df is None:
-            raise ValueError('No population to show (df == None)')
+            message = '*** No population to show (df == None)'
+            logger.critical(message)
+            raise ValueError(message)
 
         # first build a format string (fs) and a header string (hs)
         # go over all variables of the first individual
-        fs = ['{:5d}:']
+        fs = ['{:5s}:']
         hs_1 = '   ID:'
         
         # header and format string for fitness criteria
-        for key in self.template.fitness_list:
-            fitness_format = ' {:8.4f}'
-            fs.append(fitness_format)#' {:' + str(max) + '.4f}')
+        # adjust width and fraction to maximum value per column
+        for key in df.columns: # self.template.fitness_list:
+
+            #print(key, df[key].dtype)
+            #print(np.issubdtype(df[key].dtype, np.integer))
+            this_width = width
+            mx = df[key].max()
+            if mx < 1:
+                mx = 1
+
+            l = round(log10(mx)) + 1
+            fraction = width - l - 1
+
+            # special variables exception, not pretty
+            if np.issubdtype(df[key].dtype, np.integer):
+                this_width = width - fraction
+                if this_width < 4:
+                    this_width = 4
+
+                fraction = 0
+
+            if fraction < 2:
+                fraction = 0
+            elif fraction > 6:
+                fraction = 6
+
+            fitness_format = ' {:' + f'{this_width}.{fraction}f' + '}'
+            fs.append(fitness_format)
 
             hs_1 += ' '
-            if len(key) > len(fitness_format):
-                hs_1 += key[-len(fitness_format):]
+            if len(key) > this_width: # len(fitness_format):
+                hs_1 += key[-this_width:]
             else:
-                hs_1 += key.rjust(len(fitness_format))
+                hs_1 += key.rjust(this_width)
             # if
+
         # for
 
-        # add the bitstring for headers and format
-        hs_1 += '  '
         first = self.population[0]
-        length = len(first.bits)
-        fs.append('  {:' + str(length) + 's} ')
-        hs_1 += 'bits'.rjust(length) + ' '
+
+        # add the bitstring for headers and format
+        if show_bits:
+            hs_1 += '  '
+            length = len(first.bits)
+            fs.append('  {:' + str(length) + 's} ')
+            hs_1 += 'bits'.rjust(length) + ' '
+        # if
+
         hs_2 = (len(hs_1)) * ' '
         
         # add the variables
+        hs_1 += ' '
         for key in first.dna:
             variable = first.dna[key]
-            cat = variable[CATEGORY]
             min = abs(variable[MIN])
             max = abs(variable[MAX])
 
@@ -1434,7 +1879,7 @@ class Population(object):
                 len_max = variable[MAXLENGTH] * len(header_string)
 
                 if len(key) > len_max:
-                    hs_2 += key[:len_max] + ' '
+                    hs_2 += key[:len_max - 1] + ' '
 
                 else:
                     hs_2 += key.ljust(len_max) + ' '
@@ -1442,7 +1887,9 @@ class Population(object):
                 # if
 
             else:
-                raise ValueError(f'Unknown variable type: {variable[TYPE]}')
+                message = f'*** Unknown variable type: {variable[TYPE]}'
+                logger.critical(message)
+                raise ValueError(message)
 
             # if
 
@@ -1456,7 +1903,7 @@ class Population(object):
         for idx, row in df.iterrows():
             item = 0
             individual = self.find_ga_by_id(idx)
-            line = fs[item].format(individual.id)
+            line = fs[item].format(str(individual.id))
             
             for key in df.columns:
                 item += 1
@@ -1464,8 +1911,9 @@ class Population(object):
                 line += fs[item].format(fit_var)
             # for
             
-            item += 1
-            line += fs[item].format(individual.bits.bin)
+            if show_bits:
+                item += 1
+                line += fs[item].format(individual.bits.bin)
             
             for key in individual.dna:
                 variable = individual.dna[key]
@@ -1498,6 +1946,36 @@ class Population(object):
             
             logger.info(line)
         # for
+
+        item = 0
+        line = fs[item].format('Mean')
+        
+        # print population average of fitness variables
+        for key in df.columns:
+            item += 1
+            _, means = self.statistics(key, 'mean')
+            fit_var = means [-1]
+            line += fs[item].format(fit_var)
+        # for
+        
+        logger.info('')
+        logger.info(line)
+
+        mx = self.total_cpu
+        if mx < 1:
+            mx = 1
+
+        l = round(log10(mx)) + 1
+        fraction = width - l - 1
+
+        if fraction < 2:
+            fraction = 0
+        elif fraction > 6:
+            fraction = 6
+
+        #fitness_format = '{:' + f'{width}.{fraction}f' + '}'
+        message = ('Total CPU used: {:' + f'{width}.{fraction}f' + '} seconds.')
+        logger.info(message.format(self.total_cpu))
 
         return
     
@@ -1681,10 +2159,6 @@ def ga_demo_linear_regression():
         a1 = data.data_dict['a1']
         a2 = data.data_dict['a2']
         
-        # Create a logistic regression classifier
-        #classifier = LinearRegression()
-        #classifier.fit(X_train, y_train)
-        
         y_pred = a1 * X_val + a2 # classifier.predict(X_val)
 
         mae = mean_absolute_error(y_val, y_pred)
@@ -1693,17 +2167,23 @@ def ga_demo_linear_regression():
         if mse > 0:
             rmse = sqrt(mse)
 
-        return {'val_mae': mae,
-                'val_mse': mse,
-                'val_rmse': rmse}
+        # @@@ a test to simulate the case that in some cases (30%) the GA returns 
+        # a non-fit individual, i.e. None. The next_generation function should 
+        # detect this and take measures
+        if random.random() < 0.3:
+            return None
+
+        else:
+            return {'val_mae': mae,
+                    'val_mse': mse,
+                    'val_rmse': rmse,
+                }
 
     ### fitness_linreg ###
 
 
     housing_data = pd.read_csv('/media/i-files/data/other-data/housing/housing.csv')
-    print(housing_data.shape)
     housing_data = housing_data[housing_data['median_house_value'] < 499_000]
-    print(housing_data.shape)
 
     size = 1000
     X = np.array(housing_data['median_income'][:size])
@@ -1713,82 +2193,99 @@ def ga_demo_linear_regression():
 
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.33, random_state=42)
 
+    logger.info('X_train.shape = ' + str(X_train.shape) + ' type = ' + str(X_train.dtype))
+    logger.info('y_train.shape = ' + str(y_train.shape) + ' type = ' + str(y_train.dtype))
+    logger.info('X_val.shape =   ' + str(X_val.shape) + ' type = ' + str(X_val.dtype))
+    logger.info('y_val.shape =   ' + str(y_val.shape) + ' type = ' + str(y_val.dtype))
+
     regression_model = LinearRegression()
     regression_model.fit(X_train, y_train)
-    #regression_model.coef_ = np.array([69708.18])
-    #regression_model.intercept_ = 76725.17
     
     benchmark_a1 = regression_model.coef_[0]
     benchmark_a2 = regression_model.intercept_
 
+    logger.info('')
+    logger.info('LinearRegression model output')
     print('Coefficient (a1):', benchmark_a1)
-    print('Intercept (a2):', benchmark_a2)
+    print('Intercept (a2):  ', benchmark_a2)
 
-    y_line = benchmark_a1 * X_train + benchmark_a2
+    y_line = benchmark_a1 * X_val + benchmark_a2
     y_train_pred = regression_model.predict(X_train)
     y_val_pred = regression_model.predict(X_val)
 
     mae = mean_absolute_error(y_val, y_val_pred)
-    logger.info(f'Mean absolute error: {mae}')
+    logger.info(f'Mean absolute error model: {mae}')
+    mae = mean_absolute_error(y_val, y_line)
+    logger.info(f'Mean absolute error self:  {mae}')
 
-    plt.scatter(X, y)
+    #plt.scatter(X, y)
     #plt.plot(X_train, y_train_pred, color='b')
-    plt.plot(X_train, y_line, color='r')
+    #plt.plot(X_train, y_line, color='r')
     #plt.plot(X_val, y_val_pred, color='k', linestyle='dashed')
     #plt.show()
 
-    #sys.exit()
-    logger.info('X_train.shape = ' + str(X_train.shape) + 'type = ' + str(X_train.dtype))
-    logger.info('y_train.shape = ' + str(y_train.shape) + 'type = ' + str(y_train.dtype))
-    logger.info('X_val.shape =   ' + str(X_val.shape) + 'type = ' + str(X_val.dtype))
-    logger.info('y_val.shape =   ' + str(y_val.shape) + 'type = ' + str(y_val.dtype))
-
-    fitnesses = ['cpu', 'val_mae', 'val_rmse']
-    criterion = Criterion(fitnesses[1], 'le', 1.0)
+    fitnesses = ['cpu', 'val_mae', 'doa']
+    criterion = Criterion(fitnesses, fitnesses[1], 'le', 1.0)
 
     data = GaData(X_train, X_val, None, y_train, y_val, None)
     data.register_variable('a1', 0)
     data.register_variable('a2', 1)
 
+    logger.info('')
+    logger.info('results generation 0')
     fitness = fitness_linreg(data, criterion)
     logger.info('validation mae:  {:.2f}'.format(fitness['val_mae']))
     logger.info('validation mse:  {:.2f}'.format(fitness['val_mse']))
     logger.info('validation rmse: {:.2f}'.format(fitness['val_rmse']))
 
-    pop = Population(p_mutation=0.02, 
-                     p_crossover=2, # > 1 means absolute # of crossovers 
-                     fitness=fitnesses, 
-                     selection_key=criterion.selection_key,
-                     n_best_of=1)
+    kick = {'max_kicks': 2,
+            'generation': 10,
+            'trigger': 0.01,
+            'keep': 1,
+            'p_mutation': 0.25,
+            'p_crossover': 10,
+           }
 
-    pop.add_var_float('a1', 32, 1, 100_000)
-    pop.add_var_float('a2', 32, 1, 100_000) 
+    pop = Population(p_mutation = 0.02, 
+                     p_crossover = 2, # > 1 means absolute # of crossovers 
+                     method = METHOD_ROULETTE,
+                     fitness = fitnesses, 
+                     selection_key = criterion.selection_key,
+                     kick = kick,
+                     keep = 5,
+                     best_of = 0,
+                     #random_state = 42,
+                    )
+
+    pop.add_var_float('a1', 64, 1, 100_000)
+    pop.add_var_float('a2', 64, 1, 100_000) 
     pop.set_fitness_function(fitness_linreg, data)
-    pop.create_population(10)
+    pop.create_population(10, criterion)
 
-    logger.warning('')
-    logger.warning('--- Generation 0 ---')
-    pop.pre_compute(criterion)
-    pop.show()
+    logger.info('')
+    logger.info('=== Initial Generation ===')
+    pop.show(show_bits=False)
 
-    for generation in range(1, 110):
-        logger.warning('')
-        logger.warning('*** Generation ' + str(generation))
-        pop.next_generation(10, criterion)
-        pop.show()
+    while pop.next_generation(10, criterion):
+        pop.show(show_bits=False)
 
-    # for
+    gens, tops = pop.statistics('val_mae', 'top')
+    gens, means = pop.statistics('val_mae', 'mean')
+    gens, sds = pop.statistics('val_mae', 's.d.')
 
-    for key in pop.the_best_of:
-        ga = pop.the_best_of[key]
-        logger.info(f'{ga.id}')
-      
+    plt.plot(gens, tops, color='g', label='top')
+    plt.plot(gens, means, color='r', label='mean')
+    plt.plot(gens, sds, color='b', label='sd')
+    plt.title(criterion.selection_key)
+    plt.legend()
+    plt.show()
+
     return    
-
 ### ga_demo_linear_regression ###
 
 
 if __name__ == "__main__":
+    random.seed(42)
     logger = create_logger('ga-test.log')
 
     logger.info('*** GA test')

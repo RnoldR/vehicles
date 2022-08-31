@@ -1,50 +1,3 @@
-#import logging
-#from logging.config import dictConfig
-
-
-
-# # Code initialisatie: logging
-# # create logger
-# LOGGING = { 
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'formatters': { 
-#         'standard': { 
-#             'format': '%(asctime)s [%(levelname)s] %(module)s: %(message)s'
-#         },
-#         'brief': {
-#             'format': '%(message)s'
-#         },
-#     },
-#     'handlers': { 
-#         'console': { 
-#             'level': 'INFO',
-#             'formatter': 'brief',
-#             'class': 'logging.StreamHandler',
-#             'stream': 'ext://sys.stdout',  # Default is stderr
-#         },
-#         'file': { 
-#             'level': 'DEBUG',
-#             'formatter': 'standard',
-#             'class': 'logging.FileHandler',
-#             'filename': 'mnist_classifier.log', 
-#             'mode': 'w',
-#         },
-#     },
-#     'loggers': {
-#         '': {
-#             'level': 'INFO',
-#             'handlers': ['console', 'file']
-#         },
-#     },    
-# }
-
-# logger = logging.getLogger()
-# logger.setLevel(logging.INFO)
-# logging.config.dictConfig(LOGGING)
-
-# logger.info('*** MNIST classification')
-
 from create_log import create_logger
 logger = create_logger('mnist-classifier.log')
 
@@ -63,6 +16,7 @@ import random
 import numpy as np
 import pandas as pd
 from math import sqrt
+import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from keras.models import Sequential, load_model
@@ -73,8 +27,6 @@ from tensorflow.keras.optimizers import Adam
 from sklearn.metrics import accuracy_score, f1_score
 
 import ga
-
-#printout()
 
 logger.info('')
 logger.info('=========================================')
@@ -108,8 +60,6 @@ def read_data():
 
 
 def classify_mnist(data: ga.GaData, crit: ga.Criterion):
-    cpu = time.time()
-    
     # fetch the ML data
     X_train = data.X_train
     X_val = data.X_val
@@ -122,16 +72,12 @@ def classify_mnist(data: ga.GaData, crit: ga.Criterion):
     batch_size = data.data_dict['batch_size']
     n_layers = data.data_dict['n_layers']
     layer_sizes = data.data_dict['layers']
-    #for i in range(n_layers):
-    #    layer_sizes.append(data.data_dict[f'layer_size_{i:d}'])
 
     model = Sequential()
 
     input_nodes = data.X_train.shape[1]
     output_nodes = data.y_train.shape[1]
     
-    lagen = []
-    # print('Layers:', layer_sizes)
     for units in layer_sizes:
         model.add(Dense(units, 
                         kernel_initializer='glorot_normal', 
@@ -166,20 +112,11 @@ def classify_mnist(data: ga.GaData, crit: ga.Criterion):
     val_label = np.argmax(y_val, axis=1) # act_label = 1 (index)
     pred_label = np.argmax(y_pred, axis=1) # pred_label = 1 (index)
 
-    cpu = time.time() - cpu
-    
     val_acc = accuracy_score(val_label, pred_label, normalize=True)
-    f1 = f1_score(val_label, pred_label, average='weighted')
-    acc_cpu = val_acc / cpu
-
-    #except:
-    #val_acc = -1
-    #f1 = -1
-    #acc_cpu = -1        
+    val_f1 = f1_score(val_label, pred_label, average='weighted')
     
-    # try..except
-    
-    return [val_acc, f1, acc_cpu]
+    return {'val_acc': val_acc,
+            'val_f1': val_f1}
 
 ### classify_mnist ###
 
@@ -187,78 +124,112 @@ def classify_mnist(data: ga.GaData, crit: ga.Criterion):
 # load a simple data set
 X, y = read_data()
 
-# normalize X
-X = X / 255.0
+def process_Xy(X, y, 
+               population_size: int = 10,
+               iterations: int = 10,
+               split_fraction: float = 0.33,
+               method = 'elite',
+               variables: dict = None, 
+               pop_variables = None, 
+               criterion = None,
+              ):
 
-# and one hot encode y
-y = OneHotEncoder (sparse=False).fit_transform (y).astype(np.int32)
+    # and one hot encode y
+    y = OneHotEncoder (sparse=False).fit_transform (y).astype(np.int32)
 
-# split in training and test set
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size = 0.33, 
-                                                  random_state = random_state)
+    # split in training and test set
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size = split_fraction, 
+                                                      random_state = random_state)
 
-# Rescale the predictors for better performance
-sc_X = StandardScaler()
-X_train = sc_X.fit_transform(X_train)
-X_val = sc_X.transform(X_val)
+    # Rescale the predictors for better performance
+    sc_X = StandardScaler()
+    X_train = sc_X.fit_transform(X_train)
+    X_val = sc_X.transform(X_val)
 
-# set parameter for neural network and ga
-pop_size: int = 5
-n_epochs: int = 10
-n_layers: int = 4
-layer_size: list = [3, 5, 5, 3, 5, 6]
-max_layer_size = 63
-batch_size = 128
+    data = ga.GaData(X_train, X_val, None, y_train, y_val, None)
+    data.register(variables)
 
-fitnesses = ['val_acc', 'val_f1', 'val/cpu']
-pop = ga.Population(p_mutation=0.25, p_crossover=5, 
-                    fitness=fitnesses, selection_key=fitnesses[1])
+    kick = {'max_kicks': 2,
+            'generation': 10,
+            'trigger': 0.01,
+            'keep': 1,
+            'p_mutation': 0.25,
+            'p_crossover': 10,
+           }
 
-data = ga.GaData(X_train, X_val, None, y_train, y_val, None)
-data.register_variable('verbose', 1)
-data.register_variable('n_epochs', n_epochs)
-data.register_variable('batch_size', batch_size)
-data.register_variable('n_layers', n_layers)
-data.register_variable('layers', [5, 3, 3, 5])
+    pop = ga.Population(p_mutation=0.02, 
+                        p_crossover=2, # > 1 means absolute # of crossovers 
+                        method = method,
+                        fitness=fitnesses, 
+                        selection_key=criterion.selection_key,
+                        kick = kick,
+                        keep = 5,
+                        best_of = 0,
+                        random_state = 42,
+                    )
 
-crit = ga.Criterion('val_f1', 'ge', 1.0)
-
-pop.add_var_int('n_epochs', 10, 100)
-pop.add_var_int('n_layers', 1, 4)
-pop.add_var_int_array('layers', 3, max_layer_size, 'n_layers')
-
-cpu = time.time()
-
-fitness = classify_mnist(data, crit)
-logger.info('validation accuracy: {:.2f}'.format(fitness[0]))
-logger.info('validation F1:       {:.2f}'.format(fitness[1]))
-logger.info('val accuracy / cpu:  {:.2f}'.format(fitness[2]))
-
-cpu = time.time() - cpu
-logger.info(f'CPU is {cpu:.2f}')
-
-data.data_dict['verbose'] = 0
-data.data_dict['n_epochs'] = n_epochs
-
-pop.set_fitness_function(classify_mnist, data)
-pop.create_population(pop_size)
-
-pop.population[1].show()
-
-logger.info('')
-logger.info('--- Initial Generation ---')
-pop.pre_compute(crit)
-pop.show()
-
-for generation in range(1, 11):
-    cpu = time.time()
+    pop_variables(pop, data)
 
     logger.info('')
-    logger.info('*** Generation ' + str(generation))
-    pop.next_generation(pop_size, crit)
-    pop.show()
+    logger.info(f'Creating a population of size {population_size}. This may take quite some time.')
+    pop.set_fitness_function(classify_mnist, data)
+    pop.create_population(population_size, criterion)
 
-    cpu = time.time() - cpu
-    logger.info(f'CPU for this generation: {cpu}')
+    logger.info('')
+    logger.info('--- Initial Generation ---')
+    #pop.pre_compute(criterion)
+    pop.show(show_bits = False)
+
+    i = 0
+    while pop.next_generation(population_size, criterion):
+        pop.show()
+
+        if i == iterations:
+            break
+
+        else:
+            i += 1
+
+        # if
+    # while
+
+    gens, tops = pop.statistics(criterion.selection_key, 'top')
+    gens, means = pop.statistics(criterion.selection_key, 'mean')
+    gens, sds = pop.statistics(criterion.selection_key, 's.d.')
+
+    plt.plot(gens, tops, color='g', label='top')
+    plt.plot(gens, means, color='r', label='mean')
+    plt.plot(gens, sds, color='b', label='sd')
+    plt.title(criterion.selection_key)
+    plt.legend()
+    pop.show(show_bits = False)
+
+split_fraction = 0.25
+
+variables = {'verbose': 0,
+             'n_epochs': 25,
+             'batch_size': 128,
+             'max_layer_size': 63,
+             'n_layers': 4,
+             'layers': [5, 3, 3, 5]
+            }
+
+def pop_variables(pop: ga.Population, data: ga.GaData):
+    max_layer_size = data.data_dict['max_layer_size']
+    pop.add_var_int('n_layers', 1, 4)
+    pop.add_var_int_array('layers', 3, max_layer_size, 'n_layers')
+
+fitnesses = ['cpu', 'val_acc', 'val_f1', 'f1/cpu', 'doa']
+criterion = ga.Criterion(fitnesses, fitnesses[3], 'le', 1.0)
+
+process_Xy(X, y, 
+           population_size = 10,
+           iterations = 10, 
+           method = ga.METHOD_ROULETTE,
+           variables = variables, 
+           split_fraction = split_fraction, 
+           pop_variables = pop_variables,
+           criterion = criterion,
+          )
 
 logger.info('[Ready]')
