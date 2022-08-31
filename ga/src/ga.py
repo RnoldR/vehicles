@@ -96,6 +96,10 @@ class GA(object):
         self.rejects_unviability: int = 0
         self.rejects_unviability_list: list = []
 
+        # number of GA's rejected because of being the same
+        self.same: int = 0
+        self.same_list: list = []
+
         # copy the ga when present
         if ga is not None:
             # copy variables from ga
@@ -137,7 +141,7 @@ class GA(object):
                 max_length: int=None,
                 extra: str = None,
                 value_list = None,
-               ):
+               ) -> None:
         """
         Adds a variable to the GA.
 
@@ -385,7 +389,7 @@ class GA(object):
     ### add_var ###
     
     
-    def copy_var(self, var):
+    def copy_var(self, var) -> None:
         value_list = None if var[LIST] is None else var[LIST].copy()
         self.add_var(var[NAME], var[BITLEN], var[CATEGORY], var[MIN], var[MAX], var[TYPE], var[LENGTH],
                      var[MAXLENGTH], var[EXTRA], value_list)
@@ -393,6 +397,15 @@ class GA(object):
         return
     
     ### copy_var ###
+
+
+    def equals(self, ga: GA) -> bool: 
+
+        result = self.bits.bin == ga.bits.bin
+
+        return result
+
+    ### equals ###
 
     
     def set_var_int(self, name: str, value: int):
@@ -889,7 +902,7 @@ class GA(object):
 
 class GaData(object):
     """
-    Data for GA
+    Data for GA for exchange with the fitness function.
     
     """
     
@@ -901,6 +914,7 @@ class GaData(object):
         return
     
     ### __init__ ###
+
     
     def set_datasets(self, X_train, X_val, X_test, y_train, y_val, y_test):
         self.X_train = X_train
@@ -914,6 +928,7 @@ class GaData(object):
     
     ### set_datasets ###
 
+
     def register(self, vars: dict):
         for key in vars:
             value = vars[key]
@@ -924,6 +939,7 @@ class GaData(object):
         return
 
     ### register ###
+
     
     def register_variable(self, name: str, value):
         self.data_dict[name] = value
@@ -1149,9 +1165,19 @@ class Population(object):
         return children
     
     ### create_randomized_child ###
-        
 
-    def evaluate_progress(self, crit: Criterion):
+
+    def already_exists(self, population: list, other: GA) -> GA:
+        for ga in population:
+            if other.equals(ga):
+                return ga
+
+        return None
+
+    ### already_exists ###
+
+
+    def evaluate_progress(self, crit: Criterion) -> bool:
         trigger = False
 
         if len(self.generations) > 2:
@@ -1212,10 +1238,6 @@ class Population(object):
 
             return ga.fitness_dict
 
-        #fitnesses[ga.id] = ga.fitness_dict
-
-        #fitness_keys = [key for key in fitness]
-
     ### get_fitness ###
 
 
@@ -1240,6 +1262,12 @@ class Population(object):
             children = ga_1.mate(ga_2, p_mutation, p_crossover)
 
             for child in children:
+                # check if child already exists
+                existing = self.already_exists(new_population, child)
+                if existing is not None:
+                    existing.same += 1
+                    break
+
                 # check the fitness of the child
                 fitness = self.get_fitness(child, criterion)
 
@@ -1264,6 +1292,46 @@ class Population(object):
     ### method_roulette_wheel ###
 
         
+    def method_random(self, new_population, p_mutation, p_crossover, keep: int, criterion: Criterion):
+        while len(new_population) < self.population_size:
+            idx1 = random.randint(0, len(self.population))
+            idx2 = random.randint(0, len(self.population))
+            ga_1 = self.population[idx1]
+            ga_2 = self.population[idx2]
+
+            children = ga_1.mate(ga_2, p_mutation, p_crossover)
+
+            for child in children:
+                # check if child already exists
+                existing = self.already_exists(new_population, child)
+                if existing is not None:
+                    existing.same += 1
+                    break
+
+                # check the fitness of the child
+                fitness = self.get_fitness(child, criterion)
+
+                if fitness is not None:
+                    # Child is fit, add to new_population
+                    child.generation = self.generation_seq
+                    new_population.append(child)
+
+                else:
+                    # Child is not fit, not accepted into the new population
+                    logger.debug(f'Child {child.id} was dead on arrival.')
+
+                # if
+            # for
+        # while
+
+        # get a selection of the new population based on population parameters
+        self.population = self.select(new_population, self.population_size, criterion)
+
+        return new_population
+
+    ### method_random ###
+
+        
     def method_elite(self, new_population, p_mutation, p_crossover, keep: int, criterion: Criterion):
         """
         Mates all GA's with each other and creates a new population based on the 
@@ -1284,6 +1352,12 @@ class Population(object):
                 children = ga_1.mate(ga_2, p_mutation, p_crossover)
 
                 for child in children:
+                    # check if child already exists
+                    existing = self.already_exists(new_population, child)
+                    if existing is not None:
+                        existing.same += 1
+                        break
+
                     n_expected += 1
 
                     # check the fitness of the child
@@ -1429,6 +1503,14 @@ class Population(object):
                                                         criterion = criterion,
                                                        )
 
+        elif self.method == METHOD_RANDOM:
+            new_population = self.method_roulette_wheel(new_population, 
+                                                        p_mutation = p_mutation, 
+                                                        p_crossover = p_crossover, 
+                                                        keep = keep, 
+                                                        criterion = criterion,
+                                                       )
+
         else:
             message = f'Unknown selection method: {self.method}'
             logger.critical(message)
@@ -1478,12 +1560,13 @@ class Population(object):
     ### compute_fitnesses ###
     
             
-    def get_fitnesses(self, new_population, criterion: Criterion):
+    def get_fitnesses(self, new_population: list, criterion: Criterion):
         # build a dictionary of ga.id and fitness
         fitnesses = {}
         for ga in new_population:
             fitness = ga.fitness_dict
             fitness['doa'] = ga.rejects_doa
+            fitness['same'] = ga.same
             fitnesses[ga.id] = ga.fitness_dict
         # for
 
@@ -1658,6 +1741,7 @@ class Population(object):
 
             # add special "fitness" variables
             result['doa'] = None
+            result['same'] = None
             result['cpu'] = cpu
 
             return result
@@ -2224,7 +2308,7 @@ def ga_demo_linear_regression():
     #plt.plot(X_val, y_val_pred, color='k', linestyle='dashed')
     #plt.show()
 
-    fitnesses = ['cpu', 'val_mae', 'doa']
+    fitnesses = ['cpu', 'val_mae', 'doa', 'same']
     criterion = Criterion(fitnesses, fitnesses[1], 'le', 1.0)
 
     data = GaData(X_train, X_val, None, y_train, y_val, None)
