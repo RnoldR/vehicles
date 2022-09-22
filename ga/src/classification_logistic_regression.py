@@ -16,41 +16,12 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix, accuracy_score, f1_score
 from matplotlib.colors import ListedColormap
 
-from tensorflow.keras.datasets import mnist
+#from tensorflow.keras.datasets import mnist
 
-from ga import Population, Criterion
-from ga import GaData as Data
-
-# Code initialisatie: logging
-
-def plot(classifier, X_set, y_set):
-    cmap = np.array(['red', 'green'])
-    X1, X2 = np.meshgrid(np.arange(start = X_set[:, 0].min() - 1, stop = X_set[:, 0].max() + 1,   step = 0.01),
-                        np.arange(start = X_set[:, 1].min() - 1, stop = X_set[:, 1].max() + 1, step = 0.01))
-
-    plt.contourf(X1, X2, classifier.predict(np.array([X1.ravel(), X2.ravel()]).T).reshape(X1.shape),
-                 alpha = 0.75, cmap = ListedColormap(('red', 'green')))
-
-    plt.xlim(X1.min(), X1.max())
-    plt.ylim(X2.min(), X2.max())
-
-    for i, j in enumerate(np.unique(y_set)):
-        plt.scatter(X_set[y_set == j, 0], X_set[y_set == j, 1],
-                    c = cmap[i], label = j)
-    # for
-
-    plt.title('Logistic Regression (Training set)')
-    plt.xlabel('Age')
-    plt.ylabel('Estimated Salary')
-    plt.legend()
-    plt.draw()
-    
-    return
-
-### plot ###
+from ga import ga
 
 
-def fitness_glm(data: Data, crit: Criterion):
+def fitness_log_reg(data: ga.Data, crit: ga.Criterion):
     # fetch the ML data
     X_train = data.X_train
     X_val = data.X_val
@@ -100,24 +71,21 @@ def fitness_glm(data: Data, crit: Criterion):
     return {'val_acc': val_acc,
             'val_f1': val_f1}
 
-### fitness_glm ###
+### fitness_log_reg ###
 
 
-def classify_adv(iterations, fitnesses, criterion):
-    # load a simple data set
-    dataset = pd.read_csv('../data/Social_Network_Ads.csv')
-
+def prepare_data_adv_logreg(X, y, split_fraction):
     # Encode the strings denoting gender to int
     le = LabelEncoder()
-    dataset['Gender'] = le.fit_transform(dataset['Gender'])
+    X['Gender'] = le.fit_transform(X['Gender'])
 
-    # select the data to be trained at
-    X = dataset.iloc[:, [1, 2, 3]].values
-    y = dataset.iloc[:, 4].values
+    # convert to numpy arrays
+    X = X.values
+    y = y.values
 
     # split in training and test set
     X_train, X_val, y_train, y_val = train_test_split(X, y, 
-                                                      test_size = 0.25, 
+                                                      test_size = split_fraction, 
                                                       random_state = seed)
 
     # Rescale the predictors for better performance
@@ -130,159 +98,174 @@ def classify_adv(iterations, fitnesses, criterion):
     logger.info('X_val.shape =   ' + str(X_val.shape) + 'type = ' + str(X_val.dtype))
     logger.info('y_val.shape =   ' + str(y_val.shape) + 'type = ' + str(y_val.dtype))
 
-    #pretest([0.0001, 0.1, 0.5, 0.99])
-    #sys.exit()
-    # set parameter for log regression
-    c = 0.01
-    max_iter = 100
-    data = Data(X_train, X_val, None, y_train, y_val, None)
-    data.register_variable('C', c)
-    data.register_variable('max_iter', max_iter)
+    return X_train, X_val, None, y_train, y_val, None
 
-    #fitness = fitness_glm(data, criterion)
-    #logger.info('validation accuracy: {:.2f}'.format(fitness['val_acc']))
-    #logger.info('validation F1:       {:.2f}'.format(fitness['val_f1']))
+### prepare_data_adv_logreg ###    
 
-    kick = {'generation': 10,
+
+def analyse_adv_logreg():
+    data = ga.load_data('Social_Network_Ads')
+
+    # select the data to be trained at
+    X = data.loc[:, ['Gender', 'Age', 'EstimatedSalary']]
+    y = data.loc[:, 'Purchased']
+
+    split_fraction = 0.25
+
+    kick = {
+            'max_kicks': 2,
+            'generation': 2,
             'trigger': 0.01,
             'keep': 1,
             'p_mutation': 0.25,
             'p_crossover': 10,
            }
 
-    pop = Population(p_mutation=0.02, 
-                     p_crossover=2, # > 1 means absolute # of crossovers 
-                     fitness=fitnesses, 
-                     selection_key=criterion.selection_key,
-                     kick = kick,
-                     keep = 5,
-                     best_of = 0,
-                     random_state = 42,
-                    )
+    controls = {
+                'p_mutation': 0.02,
+                'p_crossover': 2,
+                'keep': 4,
+                'kick': kick,
+               }
 
-    pop.add_var_float('C', 32, 0.0001, 0.5)    
-    pop.set_fitness_function(fitness_glm, data)
-    pop.create_population(10, criterion)
+    variables = {
+                 'verbose': 0,
+                 'c': 1,
+                 'max_iter': 100,
+                }
 
-    logger.info('')
-    logger.info('--- Generation 0 ---')
-    #pop.pre_compute(criterion)
-    pop.show(show_bits=False)
+    def variables_ga(pop: ga.Population, data: ga.Data):
+        pop.add_var_float('C', 32, 0.01, 10)    
 
-    for generation in range(1, iterations + 1):
-        logger.info('')
-        logger.info('*** Generation ' + str(generation))
-        pop.next_generation(10, criterion)
-        pop.show()
-    # for
-
-    gens, tops = pop.statistics(criterion.selection_key, 'top')
-    gens, means = pop.statistics(criterion.selection_key, 'mean')
-    gens, sds = pop.statistics(criterion.selection_key, 's.d.')
-
-    plt.plot(gens, tops, color='g', label='top')
-    plt.plot(gens, means, color='r', label='mean')
-    plt.plot(gens, sds, color='b', label='sd')
-    plt.title(criterion.selection_key)
-    plt.legend()
-    pop.show(show_bits=False)
-
-    return
-
-### classify_adv ###
+        return
 
 
-def classify_mnist(iterations, fitnesses, criterion):
-    from tensorflow.keras.datasets import mnist
+    fitnesses = ['cpu', 'val_acc', 'val_f1', 'f1/cpu', 'doa', 'same']
+    criterion = ga.Criterion(fitnesses, fitnesses[2], 'ge', 1.0)
 
-    # load mnist data set
-    (X_train, y_train), (X_val, y_val) = mnist.load_data()
-    
-    # reshape X to fit for CNN
-    X_train = X_train.reshape(X_train.shape[0], X_train.shape[1] * X_train.shape[2])
-    #y_train = y_train.reshape(y_train.shape[0], 1)
-    X_val = X_val.reshape(X_val.shape[0], X_val.shape[1] * X_val.shape[2])
-    #y_val = y_val.reshape(y_val.shape[0], 1)
+    winners = ga.run(X, y, 
+                  population_size = 10,
+                  iterations = 50, 
+                  prepare_data = prepare_data_adv_logreg,
+                  method = ga.METHOD_ROULETTE,
+                  fitness_function = fitness_log_reg,
+                  controls = controls,
+                  variables = variables, 
+                  split_fraction = split_fraction, 
+                  pop_variables = variables_ga,
+                  criterion = criterion,
+                  verbose = 0,
+                 )
 
-    # normalize X
-    X_train = X_train / 255.0
-    X_val = X_val / 255.0
-
-    # and one hot encode y
-    #y_train = OneHotEncoder(sparse=False).fit_transform (y_train).astype(np.int32)
-    #y_val = OneHotEncoder(sparse=False).fit_transform (y_val).astype(np.int32)
-
-    logger.info('X_train.shape = ' + str(X_train.shape) + 'type = ' + str(X_train.dtype))
-    logger.info('y_train.shape = ' + str(y_train.shape) + 'type = ' + str(y_train.dtype))
-    logger.info('X_val.shape =   ' + str(X_val.shape) + 'type = ' + str(X_val.dtype))
-    logger.info('y_val.shape =   ' + str(y_val.shape) + 'type = ' + str(y_val.dtype))
-
-    # set parameter for log regression
-    c = 1
-    max_iter = 1000
-    data = Data(X_train, X_val, None, y_train, y_val, None)
-    data.register_variable('C', c)
-    data.register_variable('max_iter', max_iter)
-
-    #fitness = fitness_glm(data, criterion)
-    #logger.info('validation accuracy: {:.2f}'.format(fitness['val_acc']))
-    #logger.info('validation F1:       {:.2f}'.format(fitness['val_f1']))
-
-    kick = {'generation': 10,
-            'trigger': 0.01,
-            'keep': 1,
-            'p_mutation': 0.25,
-            'p_crossover': 10,
-           }
-
-    pop = Population(p_mutation=0.02, 
-                     p_crossover=2, # > 1 means absolute # of crossovers 
-                     fitness=fitnesses, 
-                     selection_key=criterion.selection_key,
-                     kick = kick,
-                     keep = 5,
-                     best_of = 0,
-                     random_state = 42,
-                    )
-
-    pop.add_var_float('C', 32, 0.01, 10)    
-    pop.set_fitness_function(fitness_glm, data)
-
-    initial_population: int = 10
-    logger.info(f'Creating an initial population of size {initial_population}. This may take quite some time')
-    pop.create_population(initial_population, criterion)
-
-    logger.info('')
-    logger.info('--- Ivitial Generation ---')
-    pop.pre_compute(criterion)
-    pop.show()
-
-    for generation in range(1, iterations + 1):
-        logger.info('')
-        logger.info('*** Generation ' + str(generation))
-        pop.next_generation(10, criterion)
-        pop.show()
-    # for
-      
-    gens, tops = pop.statistics(criterion.selection_key, 'top')
-    gens, means = pop.statistics(criterion.selection_key, 'mean')
-    gens, sds = pop.statistics(criterion.selection_key, 's.d.')
+    gens, tops = winners.statistics(criterion.selection_key, 'top')
+    gens, means = winners.statistics(criterion.selection_key, 'mean')
+    gens, sds = winners.statistics(criterion.selection_key, 's.d.')
 
     plt.plot(gens, tops, color='g', label='top')
     plt.plot(gens, means, color='r', label='mean')
     plt.plot(gens, sds, color='b', label='sd')
     plt.title(criterion.selection_key)
     plt.legend()
+
     plt.show()
 
+    winners.show(show_bits=False)
+
     return
 
-### classify_mnist ###
+### analyse_adv_logreg ###
+
+
+def prepare_data_mnist_logreg(X: pd.DataFrame, y: pd.DataFrame, split_fraction):
+    # convert X and y to dataframes
+    X = X.values
+    y = y.values
+
+    # reshape y
+    y = y.reshape(y.shape[0],)
+
+    # split in training and test set
+    X_train, X_val, y_train, y_val = train_test_split(X, y, 
+                                                      train_size = split_fraction,
+                                                      shuffle = False)  
+
+    # Rescale the predictors for better performance
+    sc_X = StandardScaler()
+    X_train = sc_X.fit_transform(X_train)
+    X_val = sc_X.transform(X_val)
+
+    logger.info('')
+    logger.info('Data prepared for ML classifier')
+    logger.info('X_train.shape = ' + str(X_train.shape) + ' type = ' + str(X_train.dtype))
+    logger.info('X_val.  shape = ' + str(X_val.shape) + ' type = ' + str(X_val.dtype))
+    logger.info('y_train.shape = ' + str(y_train.shape) + ' type = ' + str(y_train.dtype))
+    logger.info('y_val  .shape = ' + str(y_val.shape) + ' type = ' + str(y_val.dtype))
+
+    return X_train, X_val, None, y_train, y_val, None
+
+### prepare_data_mnist_logreg ###    
+
+
+def analyse_mnist_logreg():
+    data = ga.load_data('mnist')
+    X = data.iloc[:, :-1]
+    y = data.iloc[:, -1:]
+
+    split_fraction = 60000
+
+    kick = {
+            'max_kicks': 2,
+            'generation': 2,
+            'trigger': 0.01,
+            'keep': 1,
+            'p_mutation': 0.25,
+            'p_crossover': 10,
+           }
+
+    controls = {
+                'p_mutation': 0.4,
+                'p_crossover': 2,
+                'keep': 4,
+                'kick': kick,
+               }
+
+    variables = {
+                 'verbose': 0,
+                 'c': 1,
+                 'max_iter': 100,
+                }
+
+    def variables_ga(pop: ga.Population, data: ga.Data):
+        pop.add_var_float('C', 32, 0.01, 10)    
+
+        return
+
+
+    fitnesses = ['cpu', 'val_acc', 'val_f1', 'f1/cpu', 'doa', 'same']
+    criterion = ga.Criterion(fitnesses, fitnesses[2], 'ge', 1.0)
+
+    winners = ga.run(X, y, 
+                  population_size = 10,
+                  iterations = 1000, 
+                  prepare_data = prepare_data_mnist_logreg,
+                  method = ga.METHOD_ROULETTE,
+                  fitness_function = fitness_log_reg,
+                  controls = controls,
+                  variables = variables, 
+                  split_fraction = split_fraction, 
+                  pop_variables = variables_ga,
+                  criterion = criterion,
+                  verbose = 0,
+                 )
+
+    return
+
+### analyse_mnist_log_reg ###                
 
 
 iters = 20
 fitnesses = ['cpu', 'val_f1', 'f1/cpu', 'doa'] 
-criterion = Criterion(fitnesses, fitnesses[1], 'le', 1.0)
+criterion = ga.Criterion(fitnesses, fitnesses[1], 'le', 1.0)
 
 if __name__ == "__main__":
     logger.info(' ')
@@ -291,5 +274,6 @@ if __name__ == "__main__":
     seed = 42
     random.seed(seed)
 
-    #classify_adv(iters, fitnesses, criterion)
-    classify_mnist(iters, fitnesses, criterion)
+    # load a simple data set
+    analyse_adv_logreg()
+    analyse_mnist_logreg()

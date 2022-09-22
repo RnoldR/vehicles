@@ -1,5 +1,8 @@
 # Random Forest Classification
+from create_log import create_logger
+logger = create_logger('random-forest-classifier.log')
 
+import os
 import sys
 import time
 import random
@@ -13,88 +16,11 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
 from matplotlib.colors import ListedColormap
 
-from ga import GaData as Data
-from ga import Population
+import ga
+from ga import run
 
-# Code initialisatie: logging
-import logging
-import importlib
-importlib.reload(logging)
 
-# create logger
-logger = logging.getLogger('ga')
-
-logger.setLevel(10)
-
-# create file handler which logs even debug messages
-fh = logging.FileHandler('ga.log')
-fh.setLevel(logging.DEBUG)
-
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-ch.setFormatter(logging.Formatter('%(message)s'))
-
-def plot(X_set, y_set, classifier):
-    cmap = np.array(['red', 'green'])
-    X1, X2 = np.meshgrid(np.arange(start = X_set[:, 0].min() - 1, stop = X_set[:, 0].max() + 1,   step = 0.01),
-                        np.arange(start = X_set[:, 1].min() - 1, stop = X_set[:, 1].max() + 1, step = 0.01))
-    plt.contourf(X1, X2, classifier.predict(np.array([X1.ravel(), X2.ravel()]).T).reshape(X1.shape),
-                alpha = 0.75, cmap = ListedColormap(('red', 'green')))
-    plt.xlim(X1.min(), X1.max())
-    plt.ylim(X2.min(), X2.max())
-    for i, j in enumerate(np.unique(y_set)):
-        plt.scatter(X_set[y_set == j, 0], X_set[y_set == j, 1],
-                    c = cmap[i], label = j)
-    plt.title('Logistic Regression (Training set)')
-    plt.xlabel('Age')
-    plt.ylabel('Estimated Salary')
-    plt.legend()
-    plt.draw()
-    
-    return
-
-### plot ###
-
-def classify_rfc(data: Data):
-    cpu = time.time()
-    # fetch the ML data
-    X_train = data.X_train
-    X_val = data.X_val
-    y_train = data.y_train
-    y_val = data.y_val
-    
-    # fetch the parameters for the logistic regression from data
-    n_estimators = data.data_dict['n_estimators']
-    
-    # Create a logistic regression classifier
-    classifier = RandomForestClassifier(n_estimators = n_estimators,
-                                        criterion = 'entropy', 
-                                        random_state = 0, n_jobs=1)
-    classifier.fit(X_train, y_train)
-
-    y_pred = classifier.predict(X_val)
-    cpu = time.time() - cpu
-    
-    val_acc = accuracy_score(y_val, y_pred, normalize=True)
-    f1 = f1_score(y_val, y_pred, average='weighted')
-    acc_cpu = val_acc / cpu
-    
-    return [val_acc, f1, acc_cpu]
-
-### classify_rfc ###
-
-if __name__ == "__main__":
-    logger.warning(' ')
-    logger.warning('=========================================')
-
-    seed = 42
-    random.seed(seed)
-
+def read_adv_data():
     # load a simple data set
     dataset = pd.read_csv('../data/Social_Network_Ads.csv')
     
@@ -106,46 +32,199 @@ if __name__ == "__main__":
     X = dataset.iloc[:, [1, 2, 3]].values
     y = dataset.iloc[:, 4].values
 
+    return X, y
+
+### read_adv_data ###
+
+
+def prepare_data_adv_rfc(X, y, split_fraction: float):
     # split in training and test set
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size = 0.33, 
-                                                      random_state = seed)
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size = split_fraction) 
 
     # Rescale the predictors for better performance
     sc_X = StandardScaler()
     X_train = sc_X.fit_transform(X_train)
     X_val = sc_X.transform(X_val)
 
-    # set parameter for log regression
-    n_estimators = 10
-    data = Data(X_train, X_val, None, y_train, y_val, None)
-    data.register_variable('n_estimators', n_estimators)
-    fitness = classify_rfc(data)
-    logger.warning('validation accuracy: {:.2f}'.format(fitness[0]))
-    logger.warning('validation F1:       {:.2f}'.format(fitness[1]))
-    logger.warning('val accuracy / cpu:  {:.2f}'.format(fitness[2]))
+    return X_train, X_val, None, y_train, y_val, None
 
-    # Create the population and its parameters
-    fitnesses = ['val_acc', 'val_f1', 'acc/cpu']
-    pop = Population(p_mutation=0.2, p_crossover=2, 
-                     fitness=fitnesses, 
-                     selection_key=fitnesses[0])
+### prepare_data_rfc ###    
+
+
+def read_mnist_data():
+    file_name = '/media/i-files/data/mnist/train.csv'
+    logger.info(f'Reading data from: {file_name}')
+
+    raw = pd.read_csv(file_name, sep = ',', header=None, index_col=None).to_numpy()
+    X = raw[:, 1:]
+    y = raw[:, :1]
+
+    logger.info('Raw.shape = ' + str(raw.shape) + 'type = ' + str(raw.dtype))
+    logger.info('X.shape = ' + str(X.shape) + 'type = ' + str(X.dtype))
+    logger.info('y.shape = ' + str(y.shape) + 'type = ' + str(y.dtype))
     
-    # add the variables and fitness function
-    pop.add_var('n_estimators', 16, 'I', 2, 1000)    
-    pop.set_fitness_function(classify_rfc, data)
-    pop.create_population(10)
+    return X, y
+
+### read_mnist_data ###
+
+
+def prepare_data_mnist_rfc(X, y, split_fraction: float):
+    # reshape y
+    y = y.reshape(y.shape[0],)
+
+    # split in training and test set
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size = split_fraction) 
+
+    # Rescale the predictors for better performance
+    sc_X = StandardScaler()
+    X_train = sc_X.fit_transform(X_train)
+    X_val = sc_X.transform(X_val)
+
+    return X_train, X_val, None, y_train, y_val, None
+
+### prepare_data_mnist_rfc ###    
+
+
+def fitness_rfc(data: ga.GaData, criterion: ga.Criterion):
+    # fetch the ML data
+    X_train = data.X_train
+    X_val = data.X_val
+    y_train = data.y_train
+    y_val = data.y_val
     
-    # show the start population
-    logger.warning('--- Generation 0 ---')
-    pop.pre_compute()
-    pop.show()
+    # fetch the parameters for the logistic regression from data
+    n_estimators = data.data_dict['n_estimators']
     
-    # loop over n generations
-    cpu = time.time()
-    for generation in range(1, 10):
-        logger.warning('')
-        pop.next_generation(10)
-        logger.warning('*** Generation {:d} in {:.2f} seconds ***'.
-                       format(generation, time.time() - cpu))
-        pop.show()
-      
+    # Create a logistic regression classifier
+    classifier = RandomForestClassifier(n_estimators = n_estimators,
+                                        criterion = 'entropy',
+                                       ) 
+
+    classifier.fit(X_train, y_train)
+
+    y_pred = classifier.predict(X_val)
+    
+    val_acc = accuracy_score(y_val, y_pred, normalize=True)
+    val_f1 = f1_score(y_val, y_pred, average='weighted')
+    
+    return {'val_acc': val_acc,
+            'val_f1': val_f1}
+
+### fitness_rfc ###
+
+
+def analyse_adv_rfc(X, y):
+    split_fraction = 0.25
+
+    kick = {
+            'max_kicks': 2,
+            'generation': 2,
+            'trigger': 0.01,
+            'keep': 1,
+            'p_mutation': 0.25,
+            'p_crossover': 5,
+           }
+
+    controls = {
+                'p_mutation': 0.4,
+                'p_crossover': 2,
+                'keep': 4,
+                'kick': kick,
+               }
+
+    variables = {
+                 'verbose': 1,
+                 'n_estimators': 10,
+                }
+
+    def variables_ga(pop: ga.Population, data: ga.GaData):
+        pop.add_var_int('n_estimators', 2, 1000)    
+
+        return
+
+
+    fitnesses = ['cpu', 'val_acc', 'val_f1', 'f1/cpu', 'doa', 'same']
+    criterion = ga.Criterion(fitnesses, fitnesses[2], 'ge', 1.0)
+
+    winners = ga.run(X, y, 
+                  population_size = 10,
+                  iterations = 50, 
+                  prepare_data = prepare_data_adv_rfc,
+                  method = ga.METHOD_ROULETTE,
+                  fitness_function = fitness_rfc,
+                  controls = controls,
+                  variables = variables, 
+                  split_fraction = split_fraction, 
+                  pop_variables = variables_ga,
+                  criterion = criterion,
+                  verbose = 1,
+                 )
+
+    return
+
+### analyse_adv_rfc ###                
+
+
+def analyse_mnist_rfc(X, y):
+    split_fraction = 0.25
+
+    kick = {
+            'max_kicks': 2,
+            'generation': 2,
+            'trigger': 0.01,
+            'keep': 1,
+            'p_mutation': 0.25,
+            'p_crossover': 5,
+           }
+
+    controls = {
+                'p_mutation': 0.4,
+                'p_crossover': 2,
+                'keep': 4,
+                'kick': kick,
+               }
+
+    variables = {
+                 'verbose': 1,
+                 'n_estimators': 10,
+                }
+
+    def variables_ga(pop: ga.Population, data: ga.GaData):
+        pop.add_var_int('n_estimators', 2, 1000)    
+
+        return
+
+
+    fitnesses = ['cpu', 'val_acc', 'val_f1', 'f1/cpu', 'doa', 'same']
+    criterion = ga.Criterion(fitnesses, fitnesses[2], 'ge', 1.0)
+
+    winners = ga.run(X, y, 
+                  population_size = 10,
+                  iterations = 50, 
+                  prepare_data = prepare_data_mnist_rfc,
+                  method = ga.METHOD_ROULETTE,
+                  fitness_function = fitness_rfc,
+                  controls = controls,
+                  variables = variables, 
+                  split_fraction = split_fraction, 
+                  pop_variables = variables_ga,
+                  criterion = criterion,
+                  verbose = variables['verbose'],
+                 )
+
+    return
+
+### analyse_mnist_rfc ###                
+
+
+if __name__ == "__main__":
+    # Set as many random states as possible
+    random_state = 42
+    random.seed (random_state)
+    np.random.seed(random_state)
+    os.environ['PYTHONHASHSEED'] = str (random_state)
+
+    # X, y = read_adv_data()
+    # analyse_adv_rfc(X, y)
+    X, y = read_mnist_data()
+    analyse_mnist_rfc(X, y)

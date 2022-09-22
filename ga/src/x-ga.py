@@ -4,7 +4,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.info('Initializing GA')
 
-from create_log import create_logger
+#from create_log import create_logger
 
 import sys
 import time
@@ -1541,7 +1541,7 @@ class Population(object):
 
     ### compute_generation_statistics ###
     
-    
+    '''
     def pre_compute(self, criterion: Criterion):
         """
         When a population is initially created the fitness of each 
@@ -1558,7 +1558,7 @@ class Population(object):
         
         return
     ### compute_fitnesses ###
-    
+    '''
             
     def get_fitnesses(self, new_population: list, criterion: Criterion):
         # build a dictionary of ga.id and fitness
@@ -1615,11 +1615,6 @@ class Population(object):
 
         # if             
 
-        logger.debug("get_fitnesses: Fitness of GA's")
-        for index, row in df.iterrows():
-            logger.debug(str(index) + ': ' + str(row))
-        # for
-            
         return df
 
     ### get_fitnesses ###
@@ -1843,7 +1838,7 @@ class Population(object):
     ### show_variables ###
 
 
-    def show(self, show_bits=True):
+    def show(self, show_bits: bool = True):
         # define width of a fitness field
         width = 8
 
@@ -2069,309 +2064,385 @@ class Population(object):
 ### Class: Population ###
 
 
-def ga_simple_test():
-    logger.info('')
-    logger.info('*** ga_simple_test ***')
-
-    fitnesses = ['cpu', 'val_f1', 'f1/cpu']
-
-    pop = Population(p_mutation=0.25, 
-                     p_crossover=5, 
-                     fitness=fitnesses, 
-                     selection_key=fitnesses[1])
-
-    data = GaData()
-    data.register_variable('verbose', 1)
-    data.register_variable('n_epochs', 10)
-    data.register_variable('batch_size', 128)
-    data.register_variable('n_layers', 4)
-    data.register_variable('real', 3.14)
-
-    crit = Criterion('val_f1', 'ge', 1.0)
-
-    pop.add_var_int('n_epochs', 10, 73)
-    pop.add_var_int('n_layers', 3, 7)
-    pop.add_var_float('real', 10, 1.5, 4.2)
-
-    pop.create_population(4)
-
-    pop.show_variables()
-    pop.show()
-
-    print(pop.size)
-
-    for gene in pop.population:
-        gene.show()
-
-    return
-
-### ga_simple_test ###
-
-
-def ga_simple_array_test():
-    logger.info('')
-    logger.info('*** ga_simple_array_test ***')
-    
-    fitnesses = ['val_acc', 'val_f1', 'acc/cpu']
-
-    pop = Population(p_mutation=0.25, 
-                     p_crossover=5, 
-                     fitness=fitnesses, 
-                     selection_key=fitnesses[1])
-
-    data = GaData()
-
-    n_layers = 3
-
-    # resgister variable before you can use them
-    data.register_variable('n_layers', n_layers)
-    data.register_variable('Example_coefficients', 0)
-    data.register_variable('epochs', 0)
-    data.register_variable('floats', 0)
-    data.register_variable('bsize', 0)
-
-    crit = Criterion('val_f1', 'ge', 1.0)
-
-    # now add the variables you want to use in your GA
-    pop.add_var_int('n_layers', 3, 7)
-    pop.add_var_int_array('Example_coefficients', 0, 15, 'n_layers')
-    pop.add_var_int('epochs', 10, 100)
-    pop.add_var_float('bsize', 6, 0, 3.14)
-
-    pop.create_population(4)
-
-    pop.show_variables()
-    pop.show()
-
-    for gene in pop.population:
-        gene.show()
-
-    individual = pop.find_ga_by_seq(1)
-
-    var = individual.get_var('n_layers')
-    logger.info(f'n_layers: {var}')
-
-    var = individual.get_var('Example_coefficients')
-    logger.info(f'Example coefficients: {var}')
-
-    var = individual.get_var('Example_coefficients', index=2)
-    logger.info(f'Example_coefficients[2]: {var}')
-
-    try:
-        var = individual.get_var('Example_coefficients', index=5)
-        logger.info(f'Example_coefficients[5]: {var}')
-
-    except:
-        logger.info('Expected crash')
-
-    return
-
-### ga_simple_array_test ###
-
-
-def ga_simple_list_test():
-    logger.info('')
-    logger.info('*** ga_simple_list_test ***')
-    
-    fitnesses = ['val_acc', 'val_f1', 'acc/cpu']
-    layer_sizes = [32, 64, 128, 256, 512, 1024]
-    kernel_sizes = [3, 5, 7]
-
-    pop = Population(p_mutation=0.25, 
-                     p_crossover=5, 
-                     fitness=fitnesses, 
-                     selection_key=fitnesses[1])
-
-    data = GaData()
-
-    # resgister variable before you can use them
-    data.register_variable('n_layers', 2)
-    data.register_variable('fitnesses', fitnesses)
-    data.register_variable('layers', layer_sizes)
-    data.register_variable('kernels', kernel_sizes)
-
-    crit = Criterion('val_f1', 'ge', 1.0)
-
-    # now add the variables you want to use in your GA
-    pop.add_var_int('n_layers', 2, 4)
-    pop.add_var_int('fitnesses', value_list=fitnesses)
-    pop.add_var_int_array('kernels', length='n_layers', value_list=kernel_sizes)
-    pop.add_var_int_array('layers', length='n_layers', value_list=layer_sizes)
-
-    pop.create_population(4)
-
-    pop.show_variables()
-    pop.show()
-
-    for gene in pop.population:
-        gene.show()
-
-    individual = pop.find_ga_by_seq(1)
-
-    var = individual.get_var('fitnesses')
-    logger.info(f'fitness: {var}')
-
-    var = individual.get_var('layers')
-    logger.info(f'layer_size: {var}')
-
-    var = individual.get_var('kernels')
-    logger.info(f'kernel_size: {var}')
-
-    return
-
-### ga_simple_list_test ###
-
-
-def ga_demo_linear_regression():
-    import numpy as np
-    import pandas as pd
-    import matplotlib.pyplot as plt
-
-    from math import sqrt
-    from sklearn.model_selection import train_test_split
-    from sklearn.linear_model import LinearRegression
-    from sklearn.metrics import mean_absolute_error, mean_squared_error
-
-    def fitness_linreg(data: GaData, crit: Criterion):
-        # fetch the ML data
-        X_train = data.X_train
-        X_val = data.X_val
-        y_train = data.y_train
-        y_val = data.y_val
-
-        # fetch the parameters for the logistic regression from data
-        a1 = data.data_dict['a1']
-        a2 = data.data_dict['a2']
-        
-        y_pred = a1 * X_val + a2 # classifier.predict(X_val)
-
-        mae = mean_absolute_error(y_val, y_pred)
-        mse = mean_squared_error(y_val, y_pred)
-        rmse = 0
-        if mse > 0:
-            rmse = sqrt(mse)
-
-        # @@@ a test to simulate the case that in some cases (30%) the GA returns 
-        # a non-fit individual, i.e. None. The next_generation function should 
-        # detect this and take measures
-        if random.random() < 0.3:
-            return None
-
-        else:
-            return {'val_mae': mae,
-                    'val_mse': mse,
-                    'val_rmse': rmse,
-                }
-
-    ### fitness_linreg ###
-
-
-    # using the boston housing dataset
-    housing_data = pd.read_csv('/media/i-files/data/other-data/housing/housing.csv')
-
-    # eliminate the artifact that house above $500.000 are represented as $500.000
-    housing_data = housing_data[housing_data['median_house_value'] < 499_000]
-
-    size = 10000
-    X = np.array(housing_data['median_income'][:size])
-    y = np.array(housing_data['median_house_value'][:size])
-
-    X = X.reshape(X.shape[0], 1)
-
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.33, random_state=42)
-
-    logger.info('X_train.shape = ' + str(X_train.shape) + ' type = ' + str(X_train.dtype))
-    logger.info('y_train.shape = ' + str(y_train.shape) + ' type = ' + str(y_train.dtype))
-    logger.info('X_val.shape =   ' + str(X_val.shape) + ' type = ' + str(X_val.dtype))
-    logger.info('y_val.shape =   ' + str(y_val.shape) + ' type = ' + str(y_val.dtype))
-
-    regression_model = LinearRegression()
-    regression_model.fit(X_train, y_train)
-    
-    benchmark_a1 = regression_model.coef_[0]
-    benchmark_a2 = regression_model.intercept_
-
-    logger.info('')
-    logger.info('LinearRegression model output')
-    print('Coefficient (a1):', benchmark_a1)
-    print('Intercept (a2):  ', benchmark_a2)
-
-    y_line = benchmark_a1 * X_val + benchmark_a2
-    y_train_pred = regression_model.predict(X_train)
-    y_val_pred = regression_model.predict(X_val)
-
-    mae = mean_absolute_error(y_val, y_val_pred)
-    logger.info(f'Mean absolute error model: {mae}')
-    mae = mean_absolute_error(y_val, y_line)
-    logger.info(f'Mean absolute error self:  {mae}')
-
-    #plt.scatter(X, y)
-    #plt.plot(X_train, y_train_pred, color='b')
-    #plt.plot(X_train, y_line, color='r')
-    #plt.plot(X_val, y_val_pred, color='k', linestyle='dashed')
-    #plt.show()
-
-    fitnesses = ['cpu', 'val_mae', 'doa', 'same']
-    criterion = Criterion(fitnesses, fitnesses[1], 'le', 1.0)
-
-    data = GaData(X_train, X_val, None, y_train, y_val, None)
-    data.register_variable('a1', 0)
-    data.register_variable('a2', 1)
-
-    logger.info('')
-    logger.info('results generation 0')
-    fitness = fitness_linreg(data, criterion)
-    logger.info('validation mae:  {:.2f}'.format(fitness['val_mae']))
-    logger.info('validation mse:  {:.2f}'.format(fitness['val_mse']))
-    logger.info('validation rmse: {:.2f}'.format(fitness['val_rmse']))
-
-    kick = {'max_kicks': 2,
-            'generation': 10,
-            'trigger': 0.01,
-            'keep': 1,
-            'p_mutation': 0.25,
-            'p_crossover': 10,
-           }
-
-    pop = Population(p_mutation = 0.02, 
-                     p_crossover = 2, # > 1 means absolute # of crossovers 
-                     method = METHOD_ROULETTE,
-                     fitness = fitnesses, 
-                     selection_key = criterion.selection_key,
-                     kick = kick,
-                     keep = 5,
-                     best_of = 0,
-                     #random_state = 42,
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+
+def run(X, y, 
+        population_size: int = 10,
+        iterations: int = 10,
+        prepare_data = None,
+        controls: dict = None,
+        split_fraction: float = 0.33,
+        method: str = 'elite',
+        fitness_function = None,
+        variables: dict = None, 
+        pop_variables = None, 
+        criterion: Criterion = None,
+        verbose: int = 1,
+       ):
+
+    # prepare data
+    X_train, X_val, X_test, y_train, y_val, y_test = prepare_data(X, y, split_fraction)
+
+    data = GaData(X_train, X_val, X_test, y_train, y_val, y_test)
+    data.register(variables)
+
+    pop = Population(
+                    p_mutation = controls['p_mutation'], 
+                    p_crossover = controls['p_crossover'],
+                    keep = controls['keep'],
+                    kick = controls['kick'],
+                    method = method,
+                    fitness = criterion.fitnesses,
+                    selection_key = criterion.selection_key,
+                    best_of = 0,
                     )
 
-    pop.add_var_float('a1', 64, 1, 100_000)
-    pop.add_var_float('a2', 64, 1, 100_000) 
-    pop.set_fitness_function(fitness_linreg, data)
-    pop.create_population(10, criterion)
+    pop_variables(pop, data)
 
     logger.info('')
-    logger.info('=== Initial Generation ===')
-    pop.show(show_bits=False)
+    logger.info(f'Creating a population of size {population_size}. This may take quite some time.')
+    pop.set_fitness_function(fitness_function, data)
+    pop.create_population(population_size, criterion)
 
-    while pop.next_generation(10, criterion):
-        pop.show(show_bits=False)
+    logger.info('')
+    logger.info('=== Initial Generation ====')
+    pop.show(show_bits = False)
 
-    gens, tops = pop.statistics('val_mae', 'top')
-    gens, means = pop.statistics('val_mae', 'mean')
-    gens, sds = pop.statistics('val_mae', 's.d.')
+    i = 0
+    while pop.next_generation(population_size, criterion):
+        pop.show(show_bits = True)
 
-    plt.plot(gens, tops, color='g', label='top')
-    plt.plot(gens, means, color='r', label='mean')
-    plt.plot(gens, sds, color='b', label='sd')
-    plt.title(criterion.selection_key)
-    plt.legend()
-    plt.show()
+        if i == iterations:
+            break
 
-    return    
-### ga_demo_linear_regression ###
+        else:
+            i += 1
+
+        # if
+
+    # while
+
+    if verbose > 0:
+        gens, tops = pop.statistics(criterion.selection_key, 'top')
+        gens, means = pop.statistics(criterion.selection_key, 'mean')
+        gens, sds = pop.statistics(criterion.selection_key, 's.d.')
+        
+        plt.plot(gens, tops, color='g', label='top')
+        plt.plot(gens, means, color='r', label='mean')
+        plt.plot(gens, sds, color='b', label='sd')
+        plt.title(criterion.selection_key)
+        plt.legend()
+        plt.show()
+
+    return pop
+
+### run ###
 
 
 if __name__ == "__main__":
+    def ga_simple_test():
+        logger.info('')
+        logger.info('*** ga_simple_test ***')
+
+        fitnesses = ['cpu', 'val_f1', 'f1/cpu']
+
+        pop = Population(p_mutation=0.25, 
+                        p_crossover=5, 
+                        fitness=fitnesses, 
+                        selection_key=fitnesses[1])
+
+        data = GaData()
+        data.register_variable('verbose', 1)
+        data.register_variable('n_epochs', 10)
+        data.register_variable('batch_size', 128)
+        data.register_variable('n_layers', 4)
+        data.register_variable('real', 3.14)
+
+        crit = Criterion('val_f1', 'ge', 1.0)
+
+        pop.add_var_int('n_epochs', 10, 73)
+        pop.add_var_int('n_layers', 3, 7)
+        pop.add_var_float('real', 10, 1.5, 4.2)
+
+        pop.create_population(4)
+
+        pop.show_variables()
+        pop.show()
+
+        print(pop.size)
+
+        for gene in pop.population:
+            gene.show()
+
+        return
+
+    ### ga_simple_test ###
+
+
+    def ga_simple_array_test():
+        logger.info('')
+        logger.info('*** ga_simple_array_test ***')
+        
+        fitnesses = ['val_acc', 'val_f1', 'acc/cpu']
+
+        pop = Population(p_mutation=0.25, 
+                        p_crossover=5, 
+                        fitness=fitnesses, 
+                        selection_key=fitnesses[1])
+
+        data = GaData()
+
+        n_layers = 3
+
+        # resgister variable before you can use them
+        data.register_variable('n_layers', n_layers)
+        data.register_variable('Example_coefficients', 0)
+        data.register_variable('epochs', 0)
+        data.register_variable('floats', 0)
+        data.register_variable('bsize', 0)
+
+        crit = Criterion('val_f1', 'ge', 1.0)
+
+        # now add the variables you want to use in your GA
+        pop.add_var_int('n_layers', 3, 7)
+        pop.add_var_int_array('Example_coefficients', 0, 15, 'n_layers')
+        pop.add_var_int('epochs', 10, 100)
+        pop.add_var_float('bsize', 6, 0, 3.14)
+
+        pop.create_population(4)
+
+        pop.show_variables()
+        pop.show()
+
+        for gene in pop.population:
+            gene.show()
+
+        individual = pop.find_ga_by_seq(1)
+
+        var = individual.get_var('n_layers')
+        logger.info(f'n_layers: {var}')
+
+        var = individual.get_var('Example_coefficients')
+        logger.info(f'Example coefficients: {var}')
+
+        var = individual.get_var('Example_coefficients', index=2)
+        logger.info(f'Example_coefficients[2]: {var}')
+
+        try:
+            var = individual.get_var('Example_coefficients', index=5)
+            logger.info(f'Example_coefficients[5]: {var}')
+
+        except:
+            logger.info('Expected crash')
+
+        return
+
+    ### ga_simple_array_test ###
+
+
+    def ga_simple_list_test():
+        logger.info('')
+        logger.info('*** ga_simple_list_test ***')
+        
+        fitnesses = ['val_acc', 'val_f1', 'acc/cpu']
+        layer_sizes = [32, 64, 128, 256, 512, 1024]
+        kernel_sizes = [3, 5, 7]
+
+        pop = Population(p_mutation=0.25, 
+                        p_crossover=5, 
+                        fitness=fitnesses, 
+                        selection_key=fitnesses[1])
+
+        data = GaData()
+
+        # resgister variable before you can use them
+        data.register_variable('n_layers', 2)
+        data.register_variable('fitnesses', fitnesses)
+        data.register_variable('layers', layer_sizes)
+        data.register_variable('kernels', kernel_sizes)
+
+        crit = Criterion('val_f1', 'ge', 1.0)
+
+        # now add the variables you want to use in your GA
+        pop.add_var_int('n_layers', 2, 4)
+        pop.add_var_int('fitnesses', value_list=fitnesses)
+        pop.add_var_int_array('kernels', length='n_layers', value_list=kernel_sizes)
+        pop.add_var_int_array('layers', length='n_layers', value_list=layer_sizes)
+
+        pop.create_population(4)
+
+        pop.show_variables()
+        pop.show()
+
+        for gene in pop.population:
+            gene.show()
+
+        individual = pop.find_ga_by_seq(1)
+
+        var = individual.get_var('fitnesses')
+        logger.info(f'fitness: {var}')
+
+        var = individual.get_var('layers')
+        logger.info(f'layer_size: {var}')
+
+        var = individual.get_var('kernels')
+        logger.info(f'kernel_size: {var}')
+
+        return
+
+    ### ga_simple_list_test ###
+
+
+    def ga_demo_linear_regression():
+        import numpy as np
+        import pandas as pd
+        import matplotlib.pyplot as plt
+
+        from math import sqrt
+        from sklearn.model_selection import train_test_split
+        from sklearn.linear_model import LinearRegression
+        from sklearn.metrics import mean_absolute_error, mean_squared_error
+
+        def fitness_linreg(data: GaData, crit: Criterion):
+            # fetch the ML data
+            X_train = data.X_train
+            X_val = data.X_val
+            y_train = data.y_train
+            y_val = data.y_val
+
+            # fetch the parameters for the logistic regression from data
+            a1 = data.data_dict['a1']
+            a2 = data.data_dict['a2']
+            
+            y_pred = a1 * X_val + a2 # classifier.predict(X_val)
+
+            mae = mean_absolute_error(y_val, y_pred)
+            mse = mean_squared_error(y_val, y_pred)
+            rmse = 0
+            if mse > 0:
+                rmse = sqrt(mse)
+
+            # @@@ a test to simulate the case that in some cases (30%) the GA returns 
+            # a non-fit individual, i.e. None. The next_generation function should 
+            # detect this and take measures
+            if random.random() < 0.3:
+                return None
+
+            else:
+                return {'val_mae': mae,
+                        'val_mse': mse,
+                        'val_rmse': rmse,
+                    }
+
+        ### fitness_linreg ###
+
+
+        # using the boston housing dataset
+        housing_data = pd.read_csv('/media/i-files/data/other-data/housing/housing.csv')
+
+        # eliminate the artifact that house above $500.000 are represented as $500.000
+        housing_data = housing_data[housing_data['median_house_value'] < 499_000]
+
+        size = 10000
+        X = np.array(housing_data['median_income'][:size])
+        y = np.array(housing_data['median_house_value'][:size])
+
+        X = X.reshape(X.shape[0], 1)
+
+        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.33, random_state=42)
+
+        logger.info('X_train.shape = ' + str(X_train.shape) + ' type = ' + str(X_train.dtype))
+        logger.info('y_train.shape = ' + str(y_train.shape) + ' type = ' + str(y_train.dtype))
+        logger.info('X_val.shape =   ' + str(X_val.shape) + ' type = ' + str(X_val.dtype))
+        logger.info('y_val.shape =   ' + str(y_val.shape) + ' type = ' + str(y_val.dtype))
+
+        regression_model = LinearRegression()
+        regression_model.fit(X_train, y_train)
+        
+        benchmark_a1 = regression_model.coef_[0]
+        benchmark_a2 = regression_model.intercept_
+
+        logger.info('')
+        logger.info('LinearRegression model output')
+        print('Coefficient (a1):', benchmark_a1)
+        print('Intercept (a2):  ', benchmark_a2)
+
+        y_line = benchmark_a1 * X_val + benchmark_a2
+        y_train_pred = regression_model.predict(X_train)
+        y_val_pred = regression_model.predict(X_val)
+
+        mae = mean_absolute_error(y_val, y_val_pred)
+        logger.info(f'Mean absolute error model: {mae}')
+        mae = mean_absolute_error(y_val, y_line)
+        logger.info(f'Mean absolute error self:  {mae}')
+
+        #plt.scatter(X, y)
+        #plt.plot(X_train, y_train_pred, color='b')
+        #plt.plot(X_train, y_line, color='r')
+        #plt.plot(X_val, y_val_pred, color='k', linestyle='dashed')
+        #plt.show()
+
+        fitnesses = ['cpu', 'val_mae', 'doa', 'same']
+        criterion = Criterion(fitnesses, fitnesses[1], 'le', 1.0)
+
+        data = GaData(X_train, X_val, None, y_train, y_val, None)
+        data.register_variable('a1', 0)
+        data.register_variable('a2', 1)
+
+        logger.info('')
+        logger.info('results generation 0')
+        fitness = fitness_linreg(data, criterion)
+        logger.info('validation mae:  {:.2f}'.format(fitness['val_mae']))
+        logger.info('validation mse:  {:.2f}'.format(fitness['val_mse']))
+        logger.info('validation rmse: {:.2f}'.format(fitness['val_rmse']))
+
+        kick = {'max_kicks': 2,
+                'generation': 10,
+                'trigger': 0.01,
+                'keep': 1,
+                'p_mutation': 0.25,
+                'p_crossover': 10,
+            }
+
+        pop = Population(p_mutation = 0.02, 
+                        p_crossover = 2, # > 1 means absolute # of crossovers 
+                        method = METHOD_ROULETTE,
+                        fitness = fitnesses, 
+                        selection_key = criterion.selection_key,
+                        kick = kick,
+                        keep = 5,
+                        best_of = 0,
+                        #random_state = 42,
+                        )
+
+        pop.add_var_float('a1', 64, 1, 100_000)
+        pop.add_var_float('a2', 64, 1, 100_000) 
+        pop.set_fitness_function(fitness_linreg, data)
+        pop.create_population(10, criterion)
+
+        logger.info('')
+        logger.info('=== Initial Generation ===')
+        pop.show(show_bits=False)
+
+        while pop.next_generation(10, criterion):
+            pop.show(show_bits=False)
+
+        gens, tops = pop.statistics('val_mae', 'top')
+        gens, means = pop.statistics('val_mae', 'mean')
+        gens, sds = pop.statistics('val_mae', 's.d.')
+
+        plt.plot(gens, tops, color='g', label='top')
+        plt.plot(gens, means, color='r', label='mean')
+        plt.plot(gens, sds, color='b', label='sd')
+        plt.title(criterion.selection_key)
+        plt.legend()
+        plt.show()
+
+        return    
+    ### ga_demo_linear_regression ###
+
+
     random.seed(42)
     logger = create_logger('ga-test.log')
 

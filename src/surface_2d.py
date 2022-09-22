@@ -1,10 +1,16 @@
+from operator import index
+from create_logger import create_logger
+logger = create_logger.create_log('logistic-regression-classifier.log')
+
 import os
 import time
 import yaml
 import pygame
 import random
 import numpy as np
+import pandas as pd
 
+"""
 # Code initialisatie: logging
 import logging
 import importlib
@@ -31,7 +37,7 @@ ch.setFormatter(logging.Formatter('%(message)s'))
 # add the handlers to the logger
 logger.addHandler(fh)
 logger.addHandler(ch)
-
+"""
 # Initialize Pandas  display options such that the whole DataFrame is printed
 #pd.options.display.max_rows = 999999
 #pd.options.display.max_columns = 999999
@@ -47,6 +53,12 @@ COMPASS = {"N": (0, -1),
 # choose icon style (1-3)    
 ICON_STYLE = 1
 
+COL_ID = 'ID'
+COL_ENERGY = 'Energy'
+COL_EXTRA = 'Extra'
+COL_CHAR = 'Char'
+COL_ICON = 'Icon'
+
 def load_config(filename):
     """
     Load configuration from taml file
@@ -54,6 +66,7 @@ def load_config(filename):
     filename (str): name of configuration file
     """
 
+    """
     filename = os.path.join(res_path, 'config/config.yaml')
     with open(filename) as yaml_data:
         config = yaml.load(yaml_data, Loader=yaml.FullLoader)
@@ -61,8 +74,14 @@ def load_config(filename):
     for key, value in config['Things'].items():
         logger.debug(str(key) + ': ' + str(value) + ', ID =' +
                      str(value[0]) + ', cost = ' + str(value[1]))
-        
     return config['Things']
+    """
+    filename = os.path.join(res_path, 'config/things.csv')
+    df = pd.read_csv(filename, sep=';', index_col='Name')
+
+    print(df)
+
+    return df
 
 class GridView2D:
     def __init__(self, grid_name: str="Grid2D", grid_file_path: str=None, 
@@ -150,14 +169,14 @@ class GridView2D:
         return 
     
     def load_resources(self, res_path, style):
-        for key in INFO:
+        for key in INFO.index:
             filename = key.lower() + '-' + str(style) + '.png'
             filename = os.path.join(res_path, filename)
             
             img = pygame.image.load(filename)
             
             img = pygame.transform.scale(img, (self.CELL_W, self.CELL_H)).convert_alpha()
-            INFO[key].append(img)
+            INFO.loc[key, 'Icon'] = img
             
         return
     
@@ -329,7 +348,7 @@ class GridView2D:
     '''
     
     def __draw_wall(self, layer, cell):
-        layer.blit(INFO["Wall"][2], (self.CELL_W * cell[0], self.CELL_H * cell[1]))
+        layer.blit(INFO.loc['Wall', 'Icon'], (self.CELL_W * cell[0], self.CELL_H * cell[1]))
 
     def create_background(self):
         line_color = (0, 0, 0, 255)
@@ -351,7 +370,7 @@ class GridView2D:
             for y in range (len(self.grid.grid_cells[x])):
                 cell = (x, y)
                 status = self.grid.grid_cells[x, y]
-                if status == INFO["Wall"][0]:
+                if status == 'Wall':
                     self.__draw_wall(background, cell)
 
         return background
@@ -372,7 +391,7 @@ class GridView2D:
         return
     
     def __draw_bitmap(self, cat, cell):
-        self.grid_layer.blit(INFO[cat][2], (self.CELL_W * cell[0], self.CELL_H * cell[1]))
+        self.grid_layer.blit(INFO.loc[cat, 'Icon'], (self.CELL_W * cell[0], self.CELL_H * cell[1]))
     
     @property
     def robot(self):
@@ -486,7 +505,7 @@ class Grid:
     
     def insert_thing(self, ThingClass, loc):
         thing = ThingClass(loc)
-        self.grid_cells[loc] = INFO[thing.type][0]
+        self.grid_cells[loc] = INFO.loc[thing.type, COL_ID]
         self.things_by_id[thing.id] = thing
         
         return thing
@@ -526,14 +545,24 @@ class Grid:
     
     def remove_thing(self, thing):
         if thing is None:
+            # not found
             logger.warning('Grid.remove_thing: argument is None')
+
         else:
             id = thing.id
+
+            # when present in list with things
             if id in self.things_by_id.keys():
-                self.grid_cells[self.things_by_id[id].location] = INFO['Field'][0]
+
+                # remove it from the grid    
+                self.grid_cells[self.things_by_id[id].location] = INFO.loc['Field', 'ID']
+
+                # delete the object
                 del self.things_by_id[id]
                 logger.info(str(thing.type) + ' removed: ' + str(id))
+
             else:
+                # not found, print warning
                 logger.warning('No ' + str(thing.type) + ' found: ' + str(id))
             
         return
@@ -602,7 +631,7 @@ class Thing():
         self.id = Thing.Seq
         self.location = location
         self.type = 'Field'
-        self.category = INFO[self.type][0]
+        self.category = INFO.loc[self.type, 'ID']
         self.energy = 0
         self.deleted = False
         
@@ -633,33 +662,33 @@ class Thing():
         cost = 0
         may_move = False
         
-        if idx == INFO['Field'][0]:
-            cost = INFO['Field'][1]
+        if idx == INFO.loc['Field', 'ID']:
+            cost = INFO.loc['Field', COL_ENERGY]
             may_move = True
-        elif idx == INFO['Wall'][0]:
-            cost = INFO['Wall'][1]
+        elif idx == INFO.loc['Wall', 'ID']:
+            cost = INFO.loc['Wall', COL_ENERGY]
             may_move = False
-        elif idx == INFO['Vehicle'][0]:
+        elif idx == INFO.loc['Vehicle', 'ID']:
             thing = grid.find_thing_by_loc(potential_pos)
             cost = thing.energy
             may_move = False
-        elif idx == INFO['Mushroom'][0]:
+        elif idx == INFO.loc['Mushroom', 'ID']:
             thing = grid.find_thing_by_loc(potential_pos)
             cost = thing.energy
             may_move = False
-        elif idx == INFO['Cactus'][0]:
+        elif idx == INFO.loc['Cactus', 'ID']:
             thing = grid.find_thing_by_loc(potential_pos)
             cost = thing.energy
             may_move = False
-        elif idx == INFO['Rock'][0]:
+        elif idx == INFO.loc['Rock', 'ID']:
             thing = grid.find_thing_by_loc(potential_pos)
             cost, may_move = thing.cost(grid, direction)
             cost = -abs(cost) + thing.energy
-        elif idx == INFO['Start'][0]:
-            cost = INFO['Start'][1]
+        elif idx == INFO.loc['Start', 'ID']:
+            cost = INFO.loc['Start', COL_ENERGY]
             may_move = True
-        elif idx == INFO['Destination'][0]:
-            cost = INFO['Destination'][1]
+        elif idx == INFO.loc['Destination', 'ID']:
+            cost = INFO.loc['Destination', COL_ENERGY]
             may_move = True
         else:
             raise ValueError('*** Unknown field code in Rock.move:', idx)
@@ -678,8 +707,8 @@ class Wall(Thing):
         super().__init__(location)
 
         self.type = 'Wall'
-        self.category = INFO[self.type][0]
-        self.energy = INFO[self.type][1]
+        self.category = INFO.loc[self.type, 'ID']
+        self.energy = INFO.loc[self.type, COL_ENERGY]
         
         return
 
@@ -688,8 +717,8 @@ class Vehicle(Thing):
         super().__init__(location)
         
         self.type = 'Vehicle'
-        self.category = INFO[self.type][0]
-        self.energy = INFO[self.type][1]
+        self.category = INFO.loc[self.type, COL_ID]
+        self.energy = INFO.loc[self.type, COL_ENERGY]
         
         return
     
@@ -702,39 +731,39 @@ class Vehicle(Thing):
         cost, may_move = self.cost(grid, direction)
         
         # Vehicle may have reached destination
-        if idx == INFO['Destination'][0]:
+        if idx == INFO.loc['Destination', COL_ID]:
             new_loc = potential_loc
             logger.info('!!!Destination reached!!!')
                     
         # Vehicle may move over the field
-        elif idx == INFO['Field'][0]:
+        elif idx == INFO.loc['Field', COL_ID]:
             new_loc = potential_loc
             
         # Vehicle may not move thru a wall
-        elif idx == INFO['Wall'][0]:
+        elif idx == INFO.loc['Wall', COL_ID]:
             new_loc = self.location
             logger.info('Vehicle cost from Wall: ' + str(cost))
             
         # Rock cannot be pushed thru a Vehicle
-        elif idx == INFO['Vehicle'][0]:
+        elif idx == INFO.loc['Vehicle', COL_ID]:
             thing = grid.find_thing_by_loc(potential_loc)
             new_loc = self.location
             
         # Cannot move over a mushroom which is lost
-        elif idx == INFO['Mushroom'][0]:
+        elif idx == INFO.loc['Mushroom', COL_ID]:
             thing = grid.find_thing_by_loc(potential_loc)
             thing.deleted = True
             new_loc = self.location
             logger.info('Vehicle energy from Mushroom: ' + str(cost))
             
         # Cannot be moved over a cactus which remainslost
-        elif idx == INFO['Cactus'][0]:
+        elif idx == INFO.loc['Cactus', COL_ID]:
             thing = grid.find_thing_by_loc(potential_loc)
             new_loc = self.location
             logger.info('Vehicle cost from Cactus: ' + str(cost))
             
         # Rock can move, depending on the object before it
-        elif idx == INFO['Rock'][0]:
+        elif idx == INFO.loc['Rock', COL_ID]:
             new_loc = self.location
             if may_move:
                 thing = grid.find_thing_by_loc(potential_loc)
@@ -750,9 +779,9 @@ class Vehicle(Thing):
         # if
     
         self.energy += cost
-        grid.grid_cells[self.location] = INFO['Field'][0]
+        grid.grid_cells[self.location] = INFO.loc['Field', COL_ID]
         self.location = new_loc
-        grid.grid_cells[self.location] = INFO['Vehicle'][0]
+        grid.grid_cells[self.location] = INFO.loc['Vehicle', COL_ID]
         
         return cost, self.location
             
@@ -763,8 +792,8 @@ class Mushroom(Thing):
         super().__init__(location)
 
         self.type = 'Mushroom'
-        self.category = INFO[self.type][0]
-        self.energy = INFO[self.type][1]
+        self.category = INFO.loc[self.type, COL_ID]
+        self.energy = INFO.loc[self.type, COL_ENERGY]
         
         return
 
@@ -775,8 +804,8 @@ class Cactus(Thing):
         super().__init__(location)
 
         self.type = 'Cactus'
-        self.category = INFO[self.type][0]
-        self.energy = INFO[self.type][1]
+        self.category = INFO.loc[self.type, COL_ID]
+        self.energy = INFO.loc[self.type, COL_ENERGY]
         
         return
 
@@ -787,8 +816,8 @@ class Rock(Thing):
         super().__init__(location)
 
         self.type = 'Rock'
-        self.category = INFO[self.type][0]
-        self.energy = INFO[self.type][1]
+        self.category = INFO.loc[self.type, COL_ID]
+        self.energy = INFO.loc[self.type, COL_ENERGY]
         
         return
 
@@ -806,36 +835,37 @@ class Rock(Thing):
         thing = None
         
         # Rock may move of the field
-        if idx == INFO['Field'][0]:
+        if idx == INFO.loc['Field', COL_ID]:
             new_loc = potential_loc
             
         # Rock may not move thru a wall
-        elif idx == INFO['Wall'][0]:
+        elif idx == INFO.loc['Wall', COL_ID]:
             new_loc = self.location
             
         # Rock cannot be pushed thru a wall
-        elif idx == INFO['Vehicle'][0]:
+        elif idx == INFO.loc['Vehicle', COL_ID]:
             thing = grid.find_thing_by_loc(potential_loc)
             new_loc = self.location
             
         # Can be pushed over a mushroom which is lost
-        elif idx == INFO['Mushroom'][0]:
+        elif idx == INFO.loc['Mushroom', COL_ID]:
             thing = grid.find_thing_by_loc(potential_loc)
             thing.deleted = True
             new_loc = potential_loc
             
         # Can be pushed over a cactus which is lost
-        elif idx == INFO['Cactus'][0]:
+        elif idx == INFO.loc['Cactus', COL_ID]:
             thing = grid.find_thing_by_loc(potential_loc)
             thing.deleted = True
             new_loc = potential_loc
             
         # Rock can move, depending on the object before it
-        elif idx == INFO['Rock'][0]:
+        elif idx == INFO.loc['Rock', COL_ID]:
             thing = grid.find_thing_by_loc(potential_loc)
             thing.move(grid, direction)
             new_loc = potential_loc
-        else:
+
+        elif idx not in [INFO.loc['Start', COL_ID], INFO.loc['Destination', COL_ID]]:
             raise ValueError('*** Unknown field code in Rock.move:', idx)
             
         # if
@@ -843,9 +873,9 @@ class Rock(Thing):
             logger.info('Rock added cost from ' + str(thing.type) + 
                         ' cost = ' + str(cost))
     
-        grid.grid_cells[self.location] = INFO['Field'][0]
+        grid.grid_cells[self.location] = INFO.loc['Field', COL_ID]
         self.location = new_loc
-        grid.grid_cells[self.location] = INFO['Rock'][0]
+        grid.grid_cells[self.location] = INFO.loc['Rock', COL_ID]
             
         return cost, self.location
             
@@ -856,8 +886,8 @@ class Start(Thing):
         super().__init__(location)
 
         self.type = 'Start'
-        self.category = INFO[self.type][0]
-        self.energy = INFO[self.type][1]
+        self.category = INFO.loc[self.type, COL_ID]
+        self.energy = INFO.loc[self.type, COL_ENERGY]
         
         return
     
@@ -868,12 +898,13 @@ class Destination(Thing):
         super().__init__(location)
 
         self.type = 'Destination'
-        self.category = INFO[self.type][0]
-        self.energy = INFO[self.type][1]
+        self.category = INFO.loc[self.type, COL_ID]
+        self.energy = INFO.loc[self.type, COL_ENERGY]
         
         return
     
-## Class: Start ##
+### Class: Start ###
+
 
 def test_move_around():
     grid = GridView2D(screen_size=(500, 500), grid_size=(20, 15), 
@@ -884,6 +915,7 @@ def test_move_around():
     print(grid.grid.print_grid())
 
     grid.update_screen()
+
     grid.direction = "X"
     time.sleep(1)
     try:
@@ -898,6 +930,9 @@ def test_move_around():
         pygame.quit()
         
     return
+
+### test_move_around ###    
+
     
 def test_move_rock(p):
     init_pos = p[0]
@@ -940,6 +975,9 @@ def test_move_rock(p):
         
     return
 
+### test_move_rock ###
+    
+
 def test_random():
     grid = GridView2D(screen_size=(500, 500), grid_size=(20, 15), 
                       res_path=res_path, 
@@ -961,9 +999,12 @@ def test_random():
         pygame.quit()
         
     return
+
+### test_random ###
+    
     
 if __name__ == "__main__":
-    res_path='/media/i/home/arnold/development/python/machine_learning/grid2d'
+    res_path='/media/i-files/home/arnold/development/python/ml/vehicles'
     #res_path = os.path.join(res_path, 'images')
 
     INFO = load_config(res_path)
