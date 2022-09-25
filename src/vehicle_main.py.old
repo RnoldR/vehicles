@@ -1,0 +1,159 @@
+from operator import index
+from create_logger import create_logger
+logger = create_logger.create_log('logistic-regression-classifier.log')
+
+import os
+import time
+import yaml
+import pygame
+import random
+import numpy as np
+import pandas as pd
+
+from things import Thing, Vehicle, Rock, Wall, Mushroom, Cactus, Start, Destination
+from thing_data import ICON_STYLE, COL_ID, COL_ICON
+from surface_2d import GridView2D
+
+"""
+# Code initialisatie: logging
+import logging
+import importlib
+importlib.reload(logging)
+
+# create logger
+logger = logging.getLogger('distances')
+
+logger.setLevel(10)
+
+# create file handler which logs even debug messages
+fh = logging.FileHandler('grid-view-2D.log')
+fh.setLevel(logging.DEBUG)
+
+# create console handler with a higher log level
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+
+# create formatter and add it to the handlers
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+fh.setFormatter(formatter)
+ch.setFormatter(logging.Formatter('%(message)s'))
+
+# add the handlers to the logger
+logger.addHandler(fh)
+logger.addHandler(ch)
+"""
+# Initialize Pandas  display options such that the whole DataFrame is printed
+#pd.options.display.max_rows = 999999
+#pd.options.display.max_columns = 999999
+
+# Vehicle directions
+#COMPASS = compass
+
+def test_move_around(res_path: str):
+    grid = GridView2D(screen_size=(500, 500), grid_size=(20, 15), 
+                      res_path=os.path.join(res_path, 'images'), 
+                      n_mushrooms=5, n_cactuses=4, n_rocks=3)
+    
+    cols, rows = grid.grid.grid_size
+    print(grid.grid.print_grid())
+
+    grid.update_screen()
+
+    grid.direction = "X"
+    time.sleep(1)
+    try:
+        while not grid.game_over:
+            grid.get_events()
+            grid.move_things()
+            grid.update_screen()
+            #time.sleep(1)
+   
+    finally:
+        time.sleep(2)
+        pygame.quit()
+        
+    return
+
+### test_move_around ###    
+
+    
+def test_move_rock(res_path: str, p):
+    init_pos = p[0]
+    grid = GridView2D(screen_size=(500, 500), grid_size=(20, 15), 
+                      res_path=res_path, 
+                      n_mushrooms=0, n_cactuses=0, n_rocks=0,
+                      init_pos = init_pos)
+    
+    cols, rows = grid.grid.grid_size
+
+    direction = "W"
+    thing1 = grid.grid.insert_thing(Rock, p[1])
+    thing2 = grid.grid.insert_thing(Rock, p[2])
+    thing3 = grid.grid.insert_thing(Rock, p[3])
+
+    print(grid.grid.print_grid())
+    grid.update_screen()
+    time.sleep(1)
+
+    robot = grid.robot
+    start_energy = robot.energy
+    grid.robot.move(grid.grid, direction)
+    grid.update_screen()
+
+    exp_loc = init_pos#(self.init_pos[0] + m2d.COMPASS[direction][0], self.init_pos[1] + m2d.COMPASS[direction][1])
+    loc = robot.location
+    thing_energy = thing1.energy + thing2.energy + thing3.energy
+    exp_energy = start_energy + thing_energy
+    energy = robot.energy
+    
+    if loc != exp_loc:
+        logger.warn('Incorrect location, expected ' + str(exp_loc) + 
+                    ' not ' + str(loc))
+    if energy != exp_energy:
+        logger.warning('Incorrect energy, expected '+ str(exp_energy) +
+                       ' not ' + str(energy))
+    
+    time.sleep(3)
+    pygame.quit()
+        
+    return
+
+### test_move_rock ###
+    
+
+def test_random(res_path: str):
+    grid = GridView2D(screen_size=(500, 500), grid_size=(20, 15), 
+                      res_path=res_path, 
+                      n_mushrooms=5, n_cactuses=4, n_rocks=3)
+    
+    cols, rows = grid.grid.grid_size
+    print(grid.grid.print_grid())
+
+    grid.update_screen()
+    time.sleep(1)
+    try:
+        while not grid.game_over:
+            grid.move_things()
+            grid.update_screen()
+            time.sleep(0.2)
+   
+    finally:
+        time.sleep(2)
+        pygame.quit()
+        
+    return
+
+### test_random ###
+    
+
+with open("../config/config.yaml", "r") as stream:
+    try:
+        resources = yaml.safe_load(stream)
+
+    except yaml.YAMLError as exc:
+        print(exc)
+
+res_path: str = resources['resource_path']
+
+if __name__ == "__main__":
+    test_move_around(res_path)

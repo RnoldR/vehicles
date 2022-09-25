@@ -1,3 +1,7 @@
+# Code initialisatie: logging
+import logging
+logger = logging.getLogger()
+
 import os
 import time
 import yaml
@@ -6,32 +10,7 @@ import random
 import numpy as np
 import pandas as pd
 
-# Code initialisatie: logging
-import logging
-import importlib
-importlib.reload(logging)
-
-# create logger
-logger = logging.getLogger('Grid2D')
-
-logger.setLevel(10)
-
-# create file handler which logs even debug messages
-fh = logging.FileHandler('grid-view-2D.log')
-fh.setLevel(logging.DEBUG)
-
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-ch.setFormatter(logging.Formatter('%(message)s'))
-
-# add the handlers to the logger
-logger.addHandler(fh)
-logger.addHandler(ch)
+from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ENERGY, COL_ICON, COL_CLASS
 
 # choose icon style (1-3)    
 ICON_STYLE = 1
@@ -119,11 +98,13 @@ class Grid:
         return strmat
     
     def insert_thing(self, ThingClass, loc) -> Thing:
-        thing = ThingClass(loc, self.definitions)
-        self.grid_cells[loc] = self.definitions.loc[thing.type]['ID']
+        thing = ThingClass(loc, self.definitions, self)
+        self.grid_cells[loc] = self.definitions.loc[thing.type, COL_CATEGORY]
         self.things_by_id[thing.id] = thing
         
         return thing
+    
+    ### insert_thing ###
     
     def insert_things(self, ThingClass, locs) -> list:
         things = []
@@ -133,11 +114,15 @@ class Grid:
                 things.append(thing)
         
         return things
+
+    ### insert_things ###
     
     def set_tracker(self, thing: Thing) -> None:
         self.tracked = thing
         
         return
+
+    ### set_tracker ###
     
     def process_command(self, command: str, grid_pos: tuple, 
                         definitions: pd.DataFrame):
@@ -173,6 +158,8 @@ class Grid:
                             str(thing.location))
         
         return
+
+    ### process_command###
     
     def generate_random_locs(self, num_things):
         # Check if things should be generated
@@ -191,6 +178,8 @@ class Grid:
 
         return thing_locations
     
+    ### generate_random_loc ###
+    
     def find_thing_by_loc(self, loc, type=''):
         for key in self.things_by_id.keys():
             thing = self.things_by_id[key]
@@ -203,6 +192,8 @@ class Grid:
         
         return None
     
+    ### find_thing_by_loc ###
+    
     def find_thing_by_type(self, thing_type: str):
         for key in self.things_by_id.keys():
             thing = self.things_by_id[key]
@@ -210,7 +201,16 @@ class Grid:
                 return thing
                 
         return None
+
+    ### find_thing_by_type ###
+
+    def find_category_at_loc(self, loc: tuple):
+        cat = self.grid_cells[loc]
+
+        return cat
     
+    ### find_category_at_loc ###
+
     def remove_thing(self, thing):
         if thing is None:
             logger.warning('Grid.remove_thing: argument is None')
@@ -219,7 +219,7 @@ class Grid:
             if id in self.things_by_id.keys():
                 if thing.category == self.grid_cells[thing.location]:
                     self.grid_cells[self.things_by_id[id].location] = \
-                        self.definitions.loc['Field']['ID']
+                        self.definitions.loc['Field', COL_CATEGORY]
                         
                 del self.things_by_id[id]
                 logger.info(str(thing.type) + ' removed: ' + str(id))
@@ -227,6 +227,8 @@ class Grid:
                 logger.warning('No ' + str(thing.type) + ' found: ' + str(id))
             
         return
+
+    ### remove_thing ###
     
     def move_things(self):
         # Move all things
@@ -247,6 +249,29 @@ class Grid:
 
         return
     
+    ### move_things ###
+    
+    def next_turn(self):
+        # Move all things
+        for id in self.things_by_id:
+            thing = self.things_by_id[id]
+            thing.next_turn()
+            
+        # remove things being flagged as deleted
+        removes = []
+        for id in self.things_by_id:
+            if self.things_by_id[id].deleted:
+                removes.append(id)
+            
+        # Kill removed things
+        for id in removes:
+            thing = self.things_by_id[id]
+            self.remove_thing(thing)
+
+        return
+
+    ### next_turn ###
+    
     def get_n_things(self, type_str):
         n = 0
         for id in self.things_by_id:
@@ -255,6 +280,8 @@ class Grid:
                 n += 1
                 
         return n
+
+    ### get_n_things ###
        
     def get_vehicles_energy(self, ThingClass):
         energy = 0
@@ -264,6 +291,8 @@ class Grid:
                 energy += thing.energy
                 
         return energy
+
+    ### get_vehicles_energy ###
     
     @staticmethod    
     def load_config(filename: str):
@@ -295,7 +324,7 @@ class Grid:
             resources[key].append(img)
             
         df = pd.DataFrame.from_dict(resources, orient='index',
-                                    columns=['ID', 'Cost', 'Growth', 'Command', 'Image'])
+                                    columns=[COL_CATEGORY, 'Cost', 'Growth', 'Command', 'Image'])
         
         return df
     
@@ -307,19 +336,19 @@ class Grid:
                 if m[i][j] == k:
                     if i>0 and m[i-1][j] == 0 and \
                         (a[i-1][j] == 0 or 
-                         a[i-1][j] == self.definitions.loc['Destination']['ID']):
+                         a[i-1][j] == self.definitions.loc['Destination', COL_CATEGORY]):
                         m[i-1][j] = k + 1
                     if j>0 and m[i][j-1] == 0 and \
                         (a[i][j-1] == 0 or
-                         a[i][j-1] == self.definitions.loc['Destination']['ID']):
+                         a[i][j-1] == self.definitions.loc['Destination', COL_CATEGORY]):
                         m[i][j-1] = k + 1
                     if i<len(m)-1 and m[i+1][j] == 0 and \
                         (a[i+1][j] == 0 or
-                         a[i+1][j] == self.definitions.loc['Destination']['ID']):
+                         a[i+1][j] == self.definitions.loc['Destination', COL_CATEGORY]):
                         m[i+1][j] = k + 1
                     if j<len(m[i])-1 and m[i][j+1] == 0 and \
                         (a[i][j+1] == 0 or
-                         a[i][j+1] == self.definitions.loc['Destination']['ID']):
+                         a[i][j+1] == self.definitions.loc['Destination', COL_CATEGORY]):
                         m[i][j+1] = k + 1
                     # if
                 # if
@@ -327,6 +356,8 @@ class Grid:
         # for
                         
         return
+
+    ### make_step ###
            
     def find_route(self):
         # find route from vehicle to its destination
@@ -346,11 +377,11 @@ class Grid:
         m = np.zeros(self.grid_cells.shape, dtype=np.int)
         k = 0
         m[start] = 1
-        #print(self.print_grid(m))
+
         while k < 32:# m[end] == 0:
             k += 1
             self.make_step(self.grid_cells, m, k)
-            #print(self.print_grid(m))
+
         # while
         
         logger.info(self.print_grid(m))
@@ -379,6 +410,8 @@ class Grid:
         the_path.reverse()
         
         return  the_path
+
+    ### find_route ###
         
 ## Class: Grid ##
 

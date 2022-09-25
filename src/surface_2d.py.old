@@ -10,78 +10,13 @@ import random
 import numpy as np
 import pandas as pd
 
-"""
-# Code initialisatie: logging
-import logging
-import importlib
-importlib.reload(logging)
+from things import set_info
+from things import Vehicle, Rock, Wall, Mushroom, Cactus, Start, Destination
+from thing_data import ICON_STYLE, COL_ID, COL_ICON
 
-# create logger
-logger = logging.getLogger('distances')
-
-logger.setLevel(10)
-
-# create file handler which logs even debug messages
-fh = logging.FileHandler('grid-view-2D.log')
-fh.setLevel(logging.DEBUG)
-
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-ch.setFormatter(logging.Formatter('%(message)s'))
-
-# add the handlers to the logger
-logger.addHandler(fh)
-logger.addHandler(ch)
-"""
 # Initialize Pandas  display options such that the whole DataFrame is printed
 #pd.options.display.max_rows = 999999
 #pd.options.display.max_columns = 999999
-
-# Vehicle directions
-COMPASS = {"N": (0, -1),
-           "E": (1, 0),
-           "S": (0, 1),
-           "W": (-1, 0),
-           "X": (0, 0)
-          }
-
-# choose icon style (1-3)    
-ICON_STYLE = 1
-
-COL_ID = 'ID'
-COL_ENERGY = 'Energy'
-COL_EXTRA = 'Extra'
-COL_CHAR = 'Char'
-COL_ICON = 'Icon'
-
-def load_config(filename):
-    """
-    Load configuration from taml file
-
-    filename (str): name of configuration file
-    """
-
-    """
-    filename = os.path.join(res_path, 'config/config.yaml')
-    with open(filename) as yaml_data:
-        config = yaml.load(yaml_data, Loader=yaml.FullLoader)
-    
-    for key, value in config['Things'].items():
-        logger.debug(str(key) + ': ' + str(value) + ', ID =' +
-                     str(value[0]) + ', cost = ' + str(value[1]))
-    return config['Things']
-    """
-    filename = os.path.join(res_path, 'config/things.csv')
-    df = pd.read_csv(filename, sep=';', index_col='Name')
-
-    print(df)
-
-    return df
 
 class GridView2D:
     def __init__(self, grid_name: str="Grid2D", grid_file_path: str=None, 
@@ -94,6 +29,8 @@ class GridView2D:
         # PyGame configurations
         pygame.init()
         pygame.display.set_caption(caption)
+
+        self.info = None
         self.clock = pygame.time.Clock()
         self.__game_over: bool = False
         self.turns: int = 0
@@ -153,6 +90,8 @@ class GridView2D:
         self.__draw_things()
 
         return
+
+    ### __init__ ###
     
     def compute_screen_size(self, screen_size, grid_size):
         grid_w: int = int(screen_size[0] / grid_size[0] + 0.5)
@@ -166,19 +105,35 @@ class GridView2D:
         self.SCREEN_W: int = self.SIM_W + self.INTF_W
         self.SCREEN_H: int = self.SIM_H
 
-        return 
+        return
+
+    ### compute_screen_size ###
     
     def load_resources(self, res_path, style):
-        for key in INFO.index:
+        # first load the csv file with Thing definitions into dataframe
+        filename = '../config/things.csv' # os.path.join(res_path, 'config/things.csv')
+        self.info = pd.read_csv(filename, sep=';', index_col='Name')
+
+        logger.info(str(self.info))
+
+        # next load icon info from images is resource path
+        for key in self.info.index:
             filename = key.lower() + '-' + str(style) + '.png'
             filename = os.path.join(res_path, filename)
             
             img = pygame.image.load(filename)
             
             img = pygame.transform.scale(img, (self.CELL_W, self.CELL_H)).convert_alpha()
-            INFO.loc[key, 'Icon'] = img
+            self.info.loc[key, 'Icon'] = img
+
+        # for
             
+        # transmit Thing info to package things
+        set_info(self.info)
+
         return
+
+    ### load_resources ###
     
     def get_events(self):
         self.direction = "X" # Equals to don't move
@@ -348,7 +303,7 @@ class GridView2D:
     '''
     
     def __draw_wall(self, layer, cell):
-        layer.blit(INFO.loc['Wall', 'Icon'], (self.CELL_W * cell[0], self.CELL_H * cell[1]))
+        layer.blit(self.info.loc['Wall', COL_ICON], (self.CELL_W * cell[0], self.CELL_H * cell[1]))
 
     def create_background(self):
         line_color = (0, 0, 0, 255)
@@ -391,7 +346,7 @@ class GridView2D:
         return
     
     def __draw_bitmap(self, cat, cell):
-        self.grid_layer.blit(INFO.loc[cat, 'Icon'], (self.CELL_W * cell[0], self.CELL_H * cell[1]))
+        self.grid_layer.blit(self.info.loc[cat, 'Icon'], (self.CELL_W * cell[0], self.CELL_H * cell[1]))
     
     @property
     def robot(self):
@@ -505,7 +460,7 @@ class Grid:
     
     def insert_thing(self, ThingClass, loc):
         thing = ThingClass(loc)
-        self.grid_cells[loc] = INFO.loc[thing.type, COL_ID]
+        self.grid_cells[loc] = self.info.loc[thing.type, COL_ID]
         self.things_by_id[thing.id] = thing
         
         return thing
@@ -555,7 +510,7 @@ class Grid:
             if id in self.things_by_id.keys():
 
                 # remove it from the grid    
-                self.grid_cells[self.things_by_id[id].location] = INFO.loc['Field', 'ID']
+                self.grid_cells[self.things_by_id[id].location] = self.info.loc['Field', 'ID']
 
                 # delete the object
                 del self.things_by_id[id]
@@ -621,392 +576,3 @@ class Grid:
         return int(self.grid_size[1])
 
 ## Class: Grid ##
-        
-class Thing():
-    Seq = 0
-    
-    def __init__(self, location=(1, 1)):
-        Thing.Seq += 1
-
-        self.id = Thing.Seq
-        self.location = location
-        self.type = 'Field'
-        self.category = INFO.loc[self.type, 'ID']
-        self.energy = 0
-        self.deleted = False
-        
-        return
-    
-    def cost(self, grid, direction):
-        ''' Computes the cost of a move in a certain direction
-        
-        A rock may move when it is pushed by a vehicle, depending on the 
-        field lying before it. There is always a cost involved, even when 
-        the rock cannot move. When a rock is pushed against a wall but the
-        cost that is transmitted to the vehicle is the energy of the rock
-        plus the nerge of the wall. For a cactus the same type of cost 
-        is computed, but the rock will move over the cactus and the cactus
-        will disappear. Thus this is a save way to get rid of cactuses.
-        
-        Cost is always negative.
-
-        Args:
-            grid (np.arry): grid on which to perform the move
-            direction (char): direction in which to move
-            
-        Returns:
-            The cost of the move when it should be effected (float)
-        '''
-        potential_pos = (self.location[0] + COMPASS[direction][0], self.location[1] + COMPASS[direction][1])
-        idx = grid.grid_cells[potential_pos]
-        cost = 0
-        may_move = False
-        
-        if idx == INFO.loc['Field', 'ID']:
-            cost = INFO.loc['Field', COL_ENERGY]
-            may_move = True
-        elif idx == INFO.loc['Wall', 'ID']:
-            cost = INFO.loc['Wall', COL_ENERGY]
-            may_move = False
-        elif idx == INFO.loc['Vehicle', 'ID']:
-            thing = grid.find_thing_by_loc(potential_pos)
-            cost = thing.energy
-            may_move = False
-        elif idx == INFO.loc['Mushroom', 'ID']:
-            thing = grid.find_thing_by_loc(potential_pos)
-            cost = thing.energy
-            may_move = False
-        elif idx == INFO.loc['Cactus', 'ID']:
-            thing = grid.find_thing_by_loc(potential_pos)
-            cost = thing.energy
-            may_move = False
-        elif idx == INFO.loc['Rock', 'ID']:
-            thing = grid.find_thing_by_loc(potential_pos)
-            cost, may_move = thing.cost(grid, direction)
-            cost = -abs(cost) + thing.energy
-        elif idx == INFO.loc['Start', 'ID']:
-            cost = INFO.loc['Start', COL_ENERGY]
-            may_move = True
-        elif idx == INFO.loc['Destination', 'ID']:
-            cost = INFO.loc['Destination', COL_ENERGY]
-            may_move = True
-        else:
-            raise ValueError('*** Unknown field code in Rock.move:', idx)
-            
-        return cost, may_move
-    
-    def move(self, grid, direction=None):
-        return
-    
-## Class: Thing ##
-
-## Class: Wall ##
-
-class Wall(Thing):
-    def __init__(self, location):
-        super().__init__(location)
-
-        self.type = 'Wall'
-        self.category = INFO.loc[self.type, 'ID']
-        self.energy = INFO.loc[self.type, COL_ENERGY]
-        
-        return
-
-class Vehicle(Thing):
-    def __init__(self, location=(1, 1)):
-        super().__init__(location)
-        
-        self.type = 'Vehicle'
-        self.category = INFO.loc[self.type, COL_ID]
-        self.energy = INFO.loc[self.type, COL_ENERGY]
-        
-        return
-    
-    def move(self, grid, direction=None):
-        if direction is None:
-            direction = random.sample(['N', 'E', 'S', 'W'], 1)[0]
-            
-        potential_loc = (self.location[0] + COMPASS[direction][0], self.location[1] + COMPASS[direction][1])
-        idx = grid.grid_cells[potential_loc]
-        cost, may_move = self.cost(grid, direction)
-        
-        # Vehicle may have reached destination
-        if idx == INFO.loc['Destination', COL_ID]:
-            new_loc = potential_loc
-            logger.info('!!!Destination reached!!!')
-                    
-        # Vehicle may move over the field
-        elif idx == INFO.loc['Field', COL_ID]:
-            new_loc = potential_loc
-            
-        # Vehicle may not move thru a wall
-        elif idx == INFO.loc['Wall', COL_ID]:
-            new_loc = self.location
-            logger.info('Vehicle cost from Wall: ' + str(cost))
-            
-        # Rock cannot be pushed thru a Vehicle
-        elif idx == INFO.loc['Vehicle', COL_ID]:
-            thing = grid.find_thing_by_loc(potential_loc)
-            new_loc = self.location
-            
-        # Cannot move over a mushroom which is lost
-        elif idx == INFO.loc['Mushroom', COL_ID]:
-            thing = grid.find_thing_by_loc(potential_loc)
-            thing.deleted = True
-            new_loc = self.location
-            logger.info('Vehicle energy from Mushroom: ' + str(cost))
-            
-        # Cannot be moved over a cactus which remainslost
-        elif idx == INFO.loc['Cactus', COL_ID]:
-            thing = grid.find_thing_by_loc(potential_loc)
-            new_loc = self.location
-            logger.info('Vehicle cost from Cactus: ' + str(cost))
-            
-        # Rock can move, depending on the object before it
-        elif idx == INFO.loc['Rock', COL_ID]:
-            new_loc = self.location
-            if may_move:
-                thing = grid.find_thing_by_loc(potential_loc)
-                thing.move(grid, direction)
-                new_loc = potential_loc
-
-            logger.info('Vehicle cost from Rock: ' + str(cost))
-
-        else:
-            logger.critical('*** Unknown field code in Rock.move: ' + str(idx))
-            raise ValueError('*** Unknown field code in Rock.move:', idx)
-                
-        # if
-    
-        self.energy += cost
-        grid.grid_cells[self.location] = INFO.loc['Field', COL_ID]
-        self.location = new_loc
-        grid.grid_cells[self.location] = INFO.loc['Vehicle', COL_ID]
-        
-        return cost, self.location
-            
-## Class: Vehicle ##
-
-class Mushroom(Thing):
-    def __init__(self, location):
-        super().__init__(location)
-
-        self.type = 'Mushroom'
-        self.category = INFO.loc[self.type, COL_ID]
-        self.energy = INFO.loc[self.type, COL_ENERGY]
-        
-        return
-
-## Class: Mushroom ##
-
-class Cactus(Thing):
-    def __init__(self, location):
-        super().__init__(location)
-
-        self.type = 'Cactus'
-        self.category = INFO.loc[self.type, COL_ID]
-        self.energy = INFO.loc[self.type, COL_ENERGY]
-        
-        return
-
-## Class: Mushroom ##
-
-class Rock(Thing):
-    def __init__(self, location):
-        super().__init__(location)
-
-        self.type = 'Rock'
-        self.category = INFO.loc[self.type, COL_ID]
-        self.energy = INFO.loc[self.type, COL_ENERGY]
-        
-        return
-
-    def move(self, grid, direction=None):
-        # When direction is None this function is called to move itself, 
-        # not from vehicle move (pushing the rock). In that case it returns
-        # immediately as it does not spontaneously move
-        if direction is None:
-            return
-            
-        # Compute a move based on the push of a vehicle
-        potential_loc = (self.location[0] + COMPASS[direction][0], self.location[1] + COMPASS[direction][1])
-        idx = grid.grid_cells[potential_loc]
-        cost, new_loc = self.cost(grid, direction)
-        thing = None
-        
-        # Rock may move of the field
-        if idx == INFO.loc['Field', COL_ID]:
-            new_loc = potential_loc
-            
-        # Rock may not move thru a wall
-        elif idx == INFO.loc['Wall', COL_ID]:
-            new_loc = self.location
-            
-        # Rock cannot be pushed thru a wall
-        elif idx == INFO.loc['Vehicle', COL_ID]:
-            thing = grid.find_thing_by_loc(potential_loc)
-            new_loc = self.location
-            
-        # Can be pushed over a mushroom which is lost
-        elif idx == INFO.loc['Mushroom', COL_ID]:
-            thing = grid.find_thing_by_loc(potential_loc)
-            thing.deleted = True
-            new_loc = potential_loc
-            
-        # Can be pushed over a cactus which is lost
-        elif idx == INFO.loc['Cactus', COL_ID]:
-            thing = grid.find_thing_by_loc(potential_loc)
-            thing.deleted = True
-            new_loc = potential_loc
-            
-        # Rock can move, depending on the object before it
-        elif idx == INFO.loc['Rock', COL_ID]:
-            thing = grid.find_thing_by_loc(potential_loc)
-            thing.move(grid, direction)
-            new_loc = potential_loc
-
-        elif idx not in [INFO.loc['Start', COL_ID], INFO.loc['Destination', COL_ID]]:
-            raise ValueError('*** Unknown field code in Rock.move:', idx)
-            
-        # if
-        if not thing is None:
-            logger.info('Rock added cost from ' + str(thing.type) + 
-                        ' cost = ' + str(cost))
-    
-        grid.grid_cells[self.location] = INFO.loc['Field', COL_ID]
-        self.location = new_loc
-        grid.grid_cells[self.location] = INFO.loc['Rock', COL_ID]
-            
-        return cost, self.location
-            
-## Class: Rock ##
-        
-class Start(Thing):
-    def __init__(self, location):
-        super().__init__(location)
-
-        self.type = 'Start'
-        self.category = INFO.loc[self.type, COL_ID]
-        self.energy = INFO.loc[self.type, COL_ENERGY]
-        
-        return
-    
-## Class: Start ##
-
-class Destination(Thing):
-    def __init__(self, location):
-        super().__init__(location)
-
-        self.type = 'Destination'
-        self.category = INFO.loc[self.type, COL_ID]
-        self.energy = INFO.loc[self.type, COL_ENERGY]
-        
-        return
-    
-### Class: Start ###
-
-
-def test_move_around():
-    grid = GridView2D(screen_size=(500, 500), grid_size=(20, 15), 
-                      res_path=os.path.join(res_path, 'images'), 
-                      n_mushrooms=5, n_cactuses=4, n_rocks=3)
-    
-    cols, rows = grid.grid.grid_size
-    print(grid.grid.print_grid())
-
-    grid.update_screen()
-
-    grid.direction = "X"
-    time.sleep(1)
-    try:
-        while not grid.game_over:
-            grid.get_events()
-            grid.move_things()
-            grid.update_screen()
-            #time.sleep(1)
-   
-    finally:
-        time.sleep(2)
-        pygame.quit()
-        
-    return
-
-### test_move_around ###    
-
-    
-def test_move_rock(p):
-    init_pos = p[0]
-    grid = GridView2D(screen_size=(500, 500), grid_size=(20, 15), 
-                      res_path=res_path, 
-                      n_mushrooms=0, n_cactuses=0, n_rocks=0,
-                      init_pos = init_pos)
-    
-    cols, rows = grid.grid.grid_size
-
-    direction = "W"
-    thing1 = grid.grid.insert_thing(Rock, p[1])
-    thing2 = grid.grid.insert_thing(Rock, p[2])
-    thing3 = grid.grid.insert_thing(Rock, p[3])
-
-    print(grid.grid.print_grid())
-    grid.update_screen()
-    time.sleep(1)
-
-    robot = grid.robot
-    start_energy = robot.energy
-    grid.robot.move(grid.grid, direction)
-    grid.update_screen()
-
-    exp_loc = init_pos#(self.init_pos[0] + m2d.COMPASS[direction][0], self.init_pos[1] + m2d.COMPASS[direction][1])
-    loc = robot.location
-    thing_energy = thing1.energy + thing2.energy + thing3.energy
-    exp_energy = start_energy + thing_energy
-    energy = robot.energy
-    
-    if loc != exp_loc:
-        logger.warn('Incorrect location, expected ' + str(exp_loc) + 
-                    ' not ' + str(loc))
-    if energy != exp_energy:
-        logger.warning('Incorrect energy, expected '+ str(exp_energy) +
-                       ' not ' + str(energy))
-    
-    time.sleep(3)
-    pygame.quit()
-        
-    return
-
-### test_move_rock ###
-    
-
-def test_random():
-    grid = GridView2D(screen_size=(500, 500), grid_size=(20, 15), 
-                      res_path=res_path, 
-                      n_mushrooms=5, n_cactuses=4, n_rocks=3)
-    
-    cols, rows = grid.grid.grid_size
-    print(grid.grid.print_grid())
-
-    grid.update_screen()
-    time.sleep(1)
-    try:
-        while not grid.game_over:
-            grid.move_things()
-            grid.update_screen()
-            time.sleep(0.2)
-   
-    finally:
-        time.sleep(2)
-        pygame.quit()
-        
-    return
-
-### test_random ###
-    
-    
-if __name__ == "__main__":
-    res_path='/media/i-files/home/arnold/development/python/ml/vehicles'
-    #res_path = os.path.join(res_path, 'images')
-
-    INFO = load_config(res_path)
-
-    test_move_around()

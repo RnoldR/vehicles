@@ -7,30 +7,7 @@ import numpy as np
 
 # Code initialisatie: logging
 import logging
-import importlib
-importlib.reload(logging)
-
-# create logger
-logger = logging.getLogger('distances')
-
-logger.setLevel(10)
-
-# create file handler which logs even debug messages
-fh = logging.FileHandler('grid-view-2D.log')
-fh.setLevel(logging.DEBUG)
-
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-ch.setFormatter(logging.Formatter('%(message)s'))
-
-# add the handlers to the logger
-logger.addHandler(fh)
-logger.addHandler(ch)
+logger = logging.getLogger()
 
 # Initialize Pandas  display options such that the whole DataFrame is printed
 #pd.options.display.max_rows = 999999

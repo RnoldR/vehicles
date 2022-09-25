@@ -6,6 +6,10 @@ Created on Thu Aug  5 20:25:15 2021
 @author: arnold
 """
 
+# Code initialisatie: logging
+import logging
+logger = logging.getLogger()
+
 import os
 import time
 import yaml
@@ -18,40 +22,16 @@ from math import sqrt
 
 from grid import Grid, COMPASS
 
-# Code initialisatie: logging
-import logging
-import importlib
-importlib.reload(logging)
-
-# create logger
-logger = logging.getLogger('Grid2D')
-
-logger.setLevel(10)
-
-# create file handler which logs even debug messages
-fh = logging.FileHandler('grid-view-2D.log')
-fh.setLevel(logging.DEBUG)
-
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-ch.setFormatter(logging.Formatter('%(message)s'))
-
-# add the handlers to the logger
-logger.addHandler(fh)
-logger.addHandler(ch)
+from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ENERGY, COL_ICON, COL_CLASS
 
 # forward declaration
 class Thing: pass
+class Grid: pass
 
 class Sensor():
-    def __init__(self, owner: Thing, world: Grid):
+    def __init__(self, owner: Thing, grid: Grid):
         self.owner = owner
-        self.world = world
+        self.grid = grid
         
         return
     
@@ -67,7 +47,7 @@ class Thing():
     DefaultMass: float = 50
     MaxMass: float = 100
     
-    def __init__(self, location: tuple, definitions: pd.DataFrame):
+    def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
         # increment sequence number
         Thing.Seq += 1
 
@@ -75,6 +55,7 @@ class Thing():
         self.id: int = Thing.Seq
         self.location: tuple = location
         self.definitions: pd.DataFrame = definitions
+        self.grid = grid
         self.deleted: bool = False
         
         # all things are field by default
@@ -139,35 +120,35 @@ class Thing():
         cost = 0
         may_move = 'no'
         
-        if idx == self.definitions.loc['Field']['ID']:
-            cost = self.definitions.loc['Field']['Cost']
+        if idx == self.definitions.loc['Field', COL_CATEGORY]:
+            cost = self.definitions.loc['Field', COL_ENERGY]
             may_move = 'yes'
-        elif idx == self.definitions.loc['Wall']['ID']:
-            cost = self.definitions.loc['Wall']['Cost']
+        elif idx == self.definitions.loc['Wall', COL_CATEGORY]:
+            cost = self.definitions.loc['Wall', COL_ENERGY]
             may_move = 'no'
-        elif idx == self.definitions.loc['Vehicle']['ID']:
+        elif idx == self.definitions.loc['Vehicle', COL_CATEGORY]:
             cost = thing.energy
             may_move = 'no'
-        elif idx == self.definitions.loc['Mushroom']['ID']:
+        elif idx == self.definitions.loc['Mushroom', COL_CATEGORY]:
             cost = thing.energy
             may_move = 'maybe'
-        elif idx == self.definitions.loc['Cactus']['ID']:
+        elif idx == self.definitions.loc['Cactus', COL_CATEGORY]:
             cost = thing.energy
             may_move = 'maybe'
-        elif idx == self.definitions.loc['Rock']['ID']:
+        elif idx == self.definitions.loc['Rock', COL_CATEGORY]:
             cost, may_move = thing.cost(grid, direction)
             cost = -abs(cost) + thing.energy
-        elif idx == self.definitions.loc['Start']['ID']:
-            cost = self.definitions.loc['Start']['Cost']
+        elif idx == self.definitions.loc['Start', COL_CATEGORY]:
+            cost = self.definitions.loc['Start', COL_ENERGY]
             may_move = 'yes'
-        elif idx == self.definitions.loc['Destination']['ID']:
-            cost = self.definitions.loc['Destination']['Cost']
+        elif idx == self.definitions.loc['Destination', COL_CATEGORY]:
+            cost = self.definitions.loc['Destination', COL_ENERGY]
             may_move = 'yes'
-        elif idx == self.definitions.loc['Dot_green']['ID']:
-            cost = self.definitions.loc['Dot_green']['Cost']
+        elif idx == self.definitions.loc['Dot_green', COL_CATEGORY]:
+            cost = self.definitions.loc['Dot_green', COL_ENERGY]
             may_move = 'yes'
-        elif idx == self.definitions.loc['Dot_red']['ID']:
-            cost = self.definitions.loc['Dot_red']['Cost']
+        elif idx == self.definitions.loc['Dot_red', COL_CATEGORY]:
+            cost = self.definitions.loc['Dot_red', COL_ENERGY]
             may_move = 'yes'
         else:
             raise ValueError('*** Unknown field code in Rock.move:', idx)

@@ -1,0 +1,345 @@
+import pandas as pd
+
+from thing_data import ICON_STYLE, COL_ID, COL_ICON
+from thing_data import compass as COMPASS
+
+INFO = None
+
+def set_info(info):
+    INFO = info
+
+# forward declaration
+class Thing: pass
+
+class Sensor():
+    def __init__(self, owner: Thing, world: Grid):
+        self.owner = owner
+        self.world = world
+        
+        return
+    
+    ### __init__ ###
+    
+### Class: Sensor ###
+        
+
+class Thing():
+    # Define static sequence number to have unique ID's
+    Seq: int = 0
+    DefaultType: str = 'Field'
+    DefaultCategory: int = 0
+    DefaultMass: float = 50
+    MaxMass: float = 100
+    
+    def __init__(self, location=(1, 1)):
+        Thing.Seq += 1
+
+        self.id = Thing.Seq
+        self.location: tuple = location
+        self.type = 'Field'
+        self.category = INFO.loc[self.type, 'ID']
+        self.energy = 0
+        self.deleted = False
+        
+        return
+
+    ### __init__ ###
+    
+    def cost(self, grid, direction):
+        ''' Computes the cost of a move in a certain direction
+        
+        A rock may move when it is pushed by a vehicle, depending on the 
+        field lying before it. There is always a cost involved, even when 
+        the rock cannot move. When a rock is pushed against a wall but the
+        cost that is transmitted to the vehicle is the energy of the rock
+        plus the nerge of the wall. For a cactus the same type of cost 
+        is computed, but the rock will move over the cactus and the cactus
+        will disappear. Thus this is a save way to get rid of cactuses.
+        
+        Cost is always negative.
+
+        Args:
+            grid (np.arry): grid on which to perform the move
+            direction (char): direction in which to move
+            
+        Returns:
+            The cost of the move when it should be effected (float)
+        '''
+        potential_pos = (self.location[0] + COMPASS[direction][0], self.location[1] + COMPASS[direction][1])
+        idx = grid.grid_cells[potential_pos]
+        cost = 0
+        may_move = False
+        
+        if idx == INFO.loc['Field', 'ID']:
+            cost = INFO.loc['Field', COL_ENERGY]
+            may_move = True
+        elif idx == INFO.loc['Wall', 'ID']:
+            cost = INFO.loc['Wall', COL_ENERGY]
+            may_move = False
+        elif idx == INFO.loc['Vehicle', 'ID']:
+            thing = grid.find_thing_by_loc(potential_pos)
+            cost = thing.energy
+            may_move = False
+        elif idx == INFO.loc['Mushroom', 'ID']:
+            thing = grid.find_thing_by_loc(potential_pos)
+            cost = thing.energy
+            may_move = False
+        elif idx == INFO.loc['Cactus', 'ID']:
+            thing = grid.find_thing_by_loc(potential_pos)
+            cost = thing.energy
+            may_move = False
+        elif idx == INFO.loc['Rock', 'ID']:
+            thing = grid.find_thing_by_loc(potential_pos)
+            cost, may_move = thing.cost(grid, direction)
+            cost = -abs(cost) + thing.energy
+        elif idx == INFO.loc['Start', 'ID']:
+            cost = INFO.loc['Start', COL_ENERGY]
+            may_move = True
+        elif idx == INFO.loc['Destination', 'ID']:
+            cost = INFO.loc['Destination', COL_ENERGY]
+            may_move = True
+        else:
+            raise ValueError('*** Unknown field code in Rock.move:', idx)
+            
+        return cost, may_move
+    
+    ### cost ###
+
+    def move(self, grid, direction=None):
+        # default does nothing
+
+        return
+
+    ### move ###
+    
+### Class: Thing ###
+
+
+class Wall(Thing):
+    def __init__(self, location):
+        super().__init__(location)
+
+        self.type = 'Wall'
+        self.category = INFO.loc[self.type, 'ID']
+        self.energy = INFO.loc[self.type, COL_ENERGY]
+        
+        return
+
+    ### __init__ ###
+
+## Class: Wall ##
+
+
+class Vehicle(Thing):
+    def __init__(self, location=(1, 1)):
+        super().__init__(location)
+        
+        self.type = 'Vehicle'
+        self.category = INFO.loc[self.type, COL_ID]
+        self.energy = INFO.loc[self.type, COL_ENERGY]
+        
+        return
+    
+    ### __init__ ###
+
+    def move(self, grid, direction=None):
+        if direction is None:
+            direction = random.sample(['N', 'E', 'S', 'W'], 1)[0]
+            
+        potential_loc = (self.location[0] + COMPASS[direction][0], self.location[1] + COMPASS[direction][1])
+        idx = grid.grid_cells[potential_loc]
+        cost, may_move = self.cost(grid, direction)
+        
+        # Vehicle may have reached destination
+        if idx == INFO.loc['Destination', COL_ID]:
+            new_loc = potential_loc
+            logger.info('!!!Destination reached!!!')
+                    
+        # Vehicle may move over the field
+        elif idx == INFO.loc['Field', COL_ID]:
+            new_loc = potential_loc
+            
+        # Vehicle may not move thru a wall
+        elif idx == INFO.loc['Wall', COL_ID]:
+            new_loc = self.location
+            logger.info('Vehicle cost from Wall: ' + str(cost))
+            
+        # Rock cannot be pushed thru a Vehicle
+        elif idx == INFO.loc['Vehicle', COL_ID]:
+            thing = grid.find_thing_by_loc(potential_loc)
+            new_loc = self.location
+            
+        # Cannot move over a mushroom which is lost
+        elif idx == INFO.loc['Mushroom', COL_ID]:
+            thing = grid.find_thing_by_loc(potential_loc)
+            thing.deleted = True
+            new_loc = self.location
+            logger.info('Vehicle energy from Mushroom: ' + str(cost))
+            
+        # Cannot be moved over a cactus which remainslost
+        elif idx == INFO.loc['Cactus', COL_ID]:
+            thing = grid.find_thing_by_loc(potential_loc)
+            new_loc = self.location
+            logger.info('Vehicle cost from Cactus: ' + str(cost))
+            
+        # Rock can move, depending on the object before it
+        elif idx == INFO.loc['Rock', COL_ID]:
+            new_loc = self.location
+            if may_move:
+                thing = grid.find_thing_by_loc(potential_loc)
+                thing.move(grid, direction)
+                new_loc = potential_loc
+
+            logger.info('Vehicle cost from Rock: ' + str(cost))
+
+        else:
+            logger.critical('*** Unknown field code in Rock.move: ' + str(idx))
+            raise ValueError('*** Unknown field code in Rock.move:', idx)
+                
+        # if
+    
+        self.energy += cost
+        grid.grid_cells[self.location] = INFO.loc['Field', COL_ID]
+        self.location = new_loc
+        grid.grid_cells[self.location] = INFO.loc['Vehicle', COL_ID]
+        
+        return cost, self.location
+
+    ### cost ###
+            
+### Class: Vehicle ###
+
+
+class Mushroom(Thing):
+    def __init__(self, location):
+        super().__init__(location)
+
+        self.type = 'Mushroom'
+        self.category = INFO.loc[self.type, COL_ID]
+        self.energy = INFO.loc[self.type, COL_ENERGY]
+        
+        return
+
+    ### __init__ ###
+
+### Class: Mushroom ###
+
+
+class Cactus(Thing):
+    def __init__(self, location):
+        super().__init__(location)
+
+        self.type = 'Cactus'
+        self.category = INFO.loc[self.type, COL_ID]
+        self.energy = INFO.loc[self.type, COL_ENERGY]
+        
+        return
+
+    ### __init__ ###
+
+### Class: Mushroom ###
+
+
+class Rock(Thing):
+    def __init__(self, location):
+        super().__init__(location)
+
+        self.type = 'Rock'
+        self.category = INFO.loc[self.type, COL_ID]
+        self.energy = INFO.loc[self.type, COL_ENERGY]
+        
+        return
+
+    ### __init__ ###
+
+    def move(self, grid, direction=None):
+        # When direction is None this function is called to move itself, 
+        # not from vehicle move (pushing the rock). In that case it returns
+        # immediately as it does not spontaneously move
+        if direction is None:
+            return
+            
+        # Compute a move based on the push of a vehicle
+        potential_loc = (self.location[0] + COMPASS[direction][0], self.location[1] + COMPASS[direction][1])
+        idx = grid.grid_cells[potential_loc]
+        cost, new_loc = self.cost(grid, direction)
+        thing = None
+        
+        # Rock may move of the field
+        if idx == INFO.loc['Field', COL_ID]:
+            new_loc = potential_loc
+            
+        # Rock may not move thru a wall
+        elif idx == INFO.loc['Wall', COL_ID]:
+            new_loc = self.location
+            
+        # Rock cannot be pushed thru a wall
+        elif idx == INFO.loc['Vehicle', COL_ID]:
+            thing = grid.find_thing_by_loc(potential_loc)
+            new_loc = self.location
+            
+        # Can be pushed over a mushroom which is lost
+        elif idx == INFO.loc['Mushroom', COL_ID]:
+            thing = grid.find_thing_by_loc(potential_loc)
+            thing.deleted = True
+            new_loc = potential_loc
+            
+        # Can be pushed over a cactus which is lost
+        elif idx == INFO.loc['Cactus', COL_ID]:
+            thing = grid.find_thing_by_loc(potential_loc)
+            thing.deleted = True
+            new_loc = potential_loc
+            
+        # Rock can move, depending on the object before it
+        elif idx == INFO.loc['Rock', COL_ID]:
+            thing = grid.find_thing_by_loc(potential_loc)
+            thing.move(grid, direction)
+            new_loc = potential_loc
+
+        elif idx not in [INFO.loc['Start', COL_ID], INFO.loc['Destination', COL_ID]]:
+            raise ValueError('*** Unknown field code in Rock.move:', idx)
+            
+        # if
+        if not thing is None:
+            logger.info('Rock added cost from ' + str(thing.type) + 
+                        ' cost = ' + str(cost))
+    
+        grid.grid_cells[self.location] = INFO.loc['Field', COL_ID]
+        self.location = new_loc
+        grid.grid_cells[self.location] = INFO.loc['Rock', COL_ID]
+            
+        return cost, self.location
+
+    ### cost ###
+            
+### Class: Rock ###
+
+        
+class Start(Thing):
+    def __init__(self, location):
+        super().__init__(location)
+
+        self.type = 'Start'
+        self.category = INFO.loc[self.type, COL_ID]
+        self.energy = INFO.loc[self.type, COL_ENERGY]
+        
+        return
+
+    ### __init__ ###
+    
+### Class: Start ###
+
+
+class Destination(Thing):
+    def __init__(self, location):
+        super().__init__(location)
+
+        self.type = 'Destination'
+        self.category = INFO.loc[self.type, COL_ID]
+        self.energy = INFO.loc[self.type, COL_ENERGY]
+        
+        return
+
+    ### __init__ ###
+    
+### Class: Start ###

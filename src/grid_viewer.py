@@ -9,32 +9,11 @@ import pandas as pd
 
 from grid import Grid
 
+from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ICON, COL_CLASS
+
 # Code initialisatie: logging
 import logging
-import importlib
-importlib.reload(logging)
-
-# create logger
-logger = logging.getLogger('GridView2D')
-
-logger.setLevel(10)
-
-# create file handler which logs even debug messages
-fh = logging.FileHandler('grid-view-2D.log')
-fh.setLevel(logging.DEBUG)
-
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-ch.setFormatter(logging.Formatter('%(message)s'))
-
-# add the handlers to the logger
-logger.addHandler(fh)
-logger.addHandler(ch)
+logger = logging.getLogger()
 
 # Initialize Pandas  display options such that the whole DataFrame is printed
 pd.options.display.max_rows = 999999
@@ -66,8 +45,8 @@ class GridView2D:
 
         # transform the images to the new cell size
         for idx in self.definitions.index:
-            img = self.definitions.loc[idx, 'Image'].copy()
-            self.definitions.loc[idx, 'Image'] = pygame \
+            img = self.definitions.loc[idx, COL_ICON].copy()
+            self.definitions.loc[idx, COL_ICON] = pygame \
                 .transform.scale(img, (self.CELL_W, self.CELL_H)).convert_alpha()
         
         #create a Surface for the grid
@@ -166,10 +145,21 @@ class GridView2D:
                         
         return
 
+    ### get_events ###
+
     def move_things(self):
         self.grid.move_things()
         
         return
+
+    ### move_things ###
+    
+    def next_turn(self):
+        self.grid.next_turn()
+        
+        return
+
+    ### next_turn ###
     
     def show_status(self, mess: str):
         # initialize font; must be called after 'pygame.init()' to avoid 'Font not Initialized' error
@@ -179,6 +169,8 @@ class GridView2D:
         label = myfont.render(mess, 1, (0, 0, 0))
         self.interface.fill((255, 255, 255))
         self.interface.blit(label, (5, 5))
+
+    ### show_status ###
     
     def update_screen(self, mode="human"):
         """ Updates all changes to the grid
@@ -290,7 +282,7 @@ class GridView2D:
         return
     
     def __draw_bitmap(self, cat, cell):
-        self.grid_layer.blit(self.definitions.loc[cat]['Image'], 
+        self.grid_layer.blit(self.definitions.loc[cat, COL_ICON], 
                              (self.CELL_W * cell[0], self.CELL_H * cell[1]))
     
 ## Class: GridView2D ##

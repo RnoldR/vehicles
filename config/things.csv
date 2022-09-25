@@ -1,4 +1,4 @@
-Name;ID;Energy;Extra;Char;Icon
+Name;Category;Energy;Extra;Char;Icon
 Field;0;-0.01;0.0;" ";
 Wall;1;-0.1;0.0;"w";
 Vehicle;2;10.0;-0.01;"v";
