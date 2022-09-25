@@ -34,7 +34,6 @@ class GridView2D:
 
         # set viewer variables
         self.game_over: bool = False
-        self.turns: int = 0
         self.insert: str = ' '
         
         # set the size of all elements of the viewer
@@ -181,12 +180,12 @@ class GridView2D:
         Returns:
             None
         """
-        self.turns += 1
                 
-        self.show_status('Turn: ' + str(self.turns))
+        self.show_status('Turn: ' + str(self.grid.turns))
         
-        caption = 'Turn: {:d} Energy {:.2f} - {:s}'.format(self.turns,
+        caption = 'Turn: {:d} Energy {:.2f} - {:s}'.format(self.grid.turns,
                          self.grid.tracked.energy, str(self.grid.tracked.location))
+                         
         pygame.display.set_caption(caption)
         logger.debug ('')
         logger.debug('*** ' + caption)
@@ -213,6 +212,8 @@ class GridView2D:
 
         return 
 
+    ### update_screen ###
+
     def quit_game(self):
         """ 
         Quits the game
@@ -221,10 +222,13 @@ class GridView2D:
             self.game_over = True
             pygame.display.quit()
             pygame.quit()
+
         except Exception:
             pass
         
         return
+
+    ### quit_game ###
 
     def reset_robot(self):
         """ 
