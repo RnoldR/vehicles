@@ -102,16 +102,7 @@ class Simple(Vehicle):
         self.energy = self.definitions.loc[self.type, COL_ENERGY]
         self.direction = 'X'
 
-        # weights for each category, default zero
-        self.weights = {}
-        for cat in self.definitions[COL_CATEGORY].items():
-            self.weights[cat] = 0
-
-        # assign specific weights for this vehicle
-        self.weights[definitions.loc['Wall', COL_CATEGORY]] = -0.75
-        self.weights[definitions.loc['Mushroom', COL_CATEGORY]] = 0.50
-        self.weights[definitions.loc['Cactus', COL_CATEGORY]] = -1.0
-        self.weights[definitions.loc['Destination', COL_CATEGORY]] = 0.5
+        self.set_weights(-0.75, 0.5, -1.0, 0.5)
 
         # create basic sensors
         self.sensors = [
@@ -124,6 +115,22 @@ class Simple(Vehicle):
         return
     
     ### __init__ ###
+
+    def set_weights(self,w_wall: float, w_mush: float, w_cact: float, w_dest: float) -> None:
+        # weights for each category, default zero
+        self.weights = {}
+        for cat in self.definitions[COL_CATEGORY].items():
+            self.weights[cat] = 0
+
+        # assign specific weights for this vehicle
+        self.weights[self.grid.definitions.loc['Wall', COL_CATEGORY]] = w_wall
+        self.weights[self.grid.definitions.loc['Mushroom', COL_CATEGORY]] = w_mush
+        self.weights[self.grid.definitions.loc['Cactus', COL_CATEGORY]] = w_cact
+        self.weights[self.grid.definitions.loc['Destination', COL_CATEGORY]] = w_dest
+
+        return
+
+    ### set_weights ###
     
     def next_turn(self):
         super().next_turn()
@@ -229,9 +236,8 @@ class Simple(Vehicle):
 
         # for
 
-        logger.info(str(evaluated_moves))
+        logger.debug(str(evaluated_moves))
 
-        # sys.exit()
         return max_move
 
     ### evaluate ###
@@ -250,7 +256,8 @@ class Simple(Vehicle):
         # Vehicle may have reached destination
         if idx == self.definitions.loc['Destination', COL_CATEGORY]:
             new_loc = potential_loc
-            logger.info('!!!Destination reached!!!')
+            if Thing.Verbose > 0:
+                logger.info('!!!Destination reached!!!')
                     
         # Vehicle may move over the field
         elif idx == self.definitions.loc['Field', COL_CATEGORY]:
@@ -259,7 +266,8 @@ class Simple(Vehicle):
         # Vehicle may not move thru a wall
         elif idx == self.definitions.loc['Wall', COL_CATEGORY]:
             new_loc = self.location
-            logger.info('Vehicle cost from Wall: ' + str(cost))
+            if Thing.Verbose > 0:
+                logger.info('Vehicle cost from Wall: ' + str(cost))
             
         # Rock cannot be pushed thru a Vehicle
         elif idx == self.definitions.loc['Vehicle', COL_CATEGORY]:
@@ -271,13 +279,15 @@ class Simple(Vehicle):
             thing = grid.find_thing_by_loc(potential_loc)
             thing.deleted = True
             new_loc = potential_loc # self.location
-            logger.info('Vehicle energy from Mushroom: ' + str(cost))
+            if Thing.Verbose > 0:
+                logger.info('Vehicle energy from Mushroom: ' + str(cost))
             
         # Cannot be moved over a cactus which remainslost
         elif idx == self.definitions.loc['Cactus', COL_CATEGORY]:
             thing = grid.find_thing_by_loc(potential_loc)
             new_loc = self.location
-            logger.info('Vehicle cost from Cactus: ' + str(cost))
+            if Thing.Verbose > 0:
+                logger.info('Vehicle cost from Cactus: ' + str(cost))
             
         # Rock can move, depending on the object before it
         elif idx == self.definitions.loc['Rock', COL_CATEGORY]:
@@ -287,21 +297,24 @@ class Simple(Vehicle):
                 thing.move(grid, direction)
                 new_loc = potential_loc
                 
-            logger.info('Vehicle cost from Rock: ' + str(cost))
+            if Thing.Verbose > 0:
+                logger.info('Vehicle cost from Rock: ' + str(cost))
 
         # Can move over a green dot which is lost
         elif idx == self.definitions.loc['Dot_green', COL_CATEGORY]:
             thing = grid.find_thing_by_loc(potential_loc, 'Dot_green')
             thing.deleted = True
             new_loc = potential_loc # self.location
-            logger.info('Vehicle energy from green dot: ' + str(cost))
+            if Thing.Verbose > 0:
+                logger.info('Vehicle energy from green dot: ' + str(cost))
             
         # Can move over a red dot which is lost
         elif idx == self.definitions.loc['Dot_red', COL_CATEGORY]:
             thing = grid.find_thing_by_loc(potential_loc)
             thing.deleted = True
             new_loc = potential_loc # self.location
-            logger.info('Vehicle energy from red dot: ' + str(cost))
+            if Thing.Verbose > 0:
+                logger.info('Vehicle energy from red dot: ' + str(cost))
             
         else:
             message = '*** Unknown field code in Rock.move: ' + str(idx)

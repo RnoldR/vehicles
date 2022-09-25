@@ -46,6 +46,7 @@ class Thing():
     DefaultCategory: int = 0
     DefaultMass: float = 50
     MaxMass: float = 100
+    Verbose: int = 1
     
     def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
         # increment sequence number
@@ -70,7 +71,7 @@ class Thing():
         self.energy: float = 0
         self.sensors = []
         self.effectors = []
-        
+
         return
     
     ### __init__ ###

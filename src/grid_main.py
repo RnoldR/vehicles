@@ -15,6 +15,7 @@ from grid import Grid, GridGenerator
 
 from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ICON, COL_CLASS
 
+from grid_thing import Thing
 from grid_objects import Wall, Vehicle, Mushroom, Cactus, Rock, \
     Start, Destination, Dot_green
 from grid_vehicles import Simple
@@ -79,10 +80,7 @@ class RandomGenerator(GridGenerator):
 
 
 class FixedGenerator(GridGenerator):
-    def __init__(self, n_mushrooms: int, n_cactuses: int, n_rocks: int):
-        self.n_mushrooms = n_mushrooms
-        self.n_cactuses = n_cactuses
-        self.n_rocks = n_rocks
+    def __init__(self):
         
         return
     
@@ -140,13 +138,9 @@ class FixedGenerator(GridGenerator):
 
         # create start upper left and destination lower right
         self.init_pos: tuple = (1, 1)
-        grid.START = grid.insert_thing(Start, self.init_pos)
-        grid.DESTINATION = grid.insert_thing(Destination, (grid.grid_size[0]-2, grid.grid_size[1]-2))
-        
-        # set vehicle on the start position and have it tracked by the grid
-        vehicle_to_be_tracked = grid.insert_thing(Simple, self.init_pos)
-        grid.set_tracker(vehicle_to_be_tracked)
-        
+        grid.set_start(Start, self.init_pos)
+        grid.set_destination(Destination, (grid.grid_size[0]-2, grid.grid_size[1]-2))
+
         return
     
     # generate #
@@ -217,13 +211,17 @@ def test_move_auto(res_path: str, icon_style: int):
     # for location in path:
     #     grid.insert_thing(Dot_green, location)
         
+    # set vehicle on the start position and have it tracked by the grid
+    vehicle_to_be_tracked = grid.insert_thing(Simple, grid.start.location)
+    grid.set_tracker(vehicle_to_be_tracked)
+
     grid_viewer.update_screen()
     grid_viewer.direction = "X"
     energy = grid.get_vehicles_energy(Vehicle)
     time.sleep(1)
 
     try:
-        while not grid_viewer.game_over and energy > 0:
+        while not grid.destination_reached() and not grid_viewer.game_over and energy > 0:
             # grid_viewer.get_events()
             # grid_viewer.move_things()
             grid_viewer.next_turn()
@@ -234,10 +232,133 @@ def test_move_auto(res_path: str, icon_style: int):
     finally:
         time.sleep(2)
         pygame.quit()
+
+    if grid.destination_reached():
+        logger.info(f'Destination reached in {grid.turns} turns.')
         
     return
     
 ### test_move_auto ###
+
+
+def loop_one_grid(res_path: str, icon_style: int):
+    random.seed(42)
+
+    rows = 15
+    cols = 20
+
+    definitions = load_thing_definitions(res_path, icon_style)
+    
+    # create a generator for this test
+    generator = FixedGenerator(n_mushrooms=5, n_cactuses=4, n_rocks=3)
+
+    # create a grid with appropriate number of columns and rows
+    grid = Grid(generator, grid_size=(cols, rows), definitions=definitions)
+
+    logger.info(grid.print_grid(grid.grid_cells))
+        
+    energy = grid.get_vehicles_energy(Vehicle)
+    time.sleep(1)
+
+    # set vehicle on the start position and have it tracked by the grid
+    vehicle_to_be_tracked = grid.insert_thing(Simple, grid.start.location)
+    grid.set_tracker(vehicle_to_be_tracked)
+
+    try:
+        while not grid.destination_reached() and energy > 0:
+            grid.next_turn()
+            energy = grid.tracked.energy
+
+        # while
+
+    finally:
+        time.sleep(2)
+        pygame.quit()
+
+    # try..except
+
+    if grid.destination_reached():
+        logger.info(f'Destination reached in {grid.turns} turns.')
+        
+    return
+    
+### test_move_auto ###
+
+
+def test_many_vehicles(res_path: str, icon_style: int, n: int) -> int:
+    def loop_one_grid(w_wall: float, w_mush: float, w_cact: float, w_dest: float):
+        random.seed(42)
+
+        rows = 15
+        cols = 20
+
+        definitions = load_thing_definitions(res_path, icon_style)
+        
+        # create a generator for this test
+        generator = FixedGenerator()
+
+        # create a grid with appropriate number of columns and rows
+        grid = Grid(generator, grid_size=(cols, rows), definitions=definitions)
+
+        logger.info(grid.print_grid(grid.grid_cells))
+            
+        energy = grid.get_vehicles_energy(Vehicle)
+        time.sleep(1)
+
+        # set vehicle on the start position and have it tracked by the grid
+        vehicle_to_be_tracked = grid.insert_thing(Simple, grid.start.location)
+        vehicle_to_be_tracked.set_weights(w_wall, w_mush, w_cact, w_dest)
+        grid.set_tracker(vehicle_to_be_tracked)
+
+        energy = 1
+        try:
+            while not grid.destination_reached(1000) and energy > 0:
+                grid.next_turn()
+                energy = grid.tracked.energy
+
+            # while
+
+        finally:
+            time.sleep(2)
+            pygame.quit()
+
+        # try..except
+
+        if grid.destination_reached():
+            logger.info(f'Destination reached in {grid.turns} turns.')
+            
+        return grid.turns
+        
+    ### test_move_auto ###
+
+    Thing.Verbose = 0
+
+    score = pd.DataFrame(index = range(n), columns = ('Wall', 'Mushroom', 
+        'Cactus', 'Destination', 'Turns'))
+
+    for i in range(n):
+        w_wall: float = 2 * random.random() - 1
+        w_mush: float = 2 * random.random() - 1
+        w_cact: float = 2 * random.random() - 1
+        w_dest: float = 2 * random.random() - 1
+
+        turns = loop_one_grid(w_wall, w_mush, w_cact, w_dest)
+
+        score.loc[i, 'Wall'] = w_wall
+        score.loc[i, 'Mushroom'] = w_mush
+        score.loc[i, 'Cactus'] = w_cact
+        score.loc[i, 'Destination'] = w_dest
+        score.loc[i, 'Wall'] = turns
+
+        logger.info(f'loop {i}: {turns}')
+
+    # for
+
+    logger.info(str(score))
+
+    return
+
+### test_many_vehicles ###
 
 
 def load_thing_definitions(res_path: str, style: int):
@@ -275,4 +396,4 @@ def load_thing_definitions(res_path: str, style: int):
 if __name__ == "__main__":
     res_path='/media/i-files/home/arnold/development/python/ml/vehicles'
 
-    test_move_auto(res_path, 1)
+    test_many_vehicles(res_path, 1, 10)

@@ -171,7 +171,8 @@ class Vehicle(Thing):
         # Vehicle may have reached destination
         if idx == self.definitions.loc['Destination', COL_CATEGORY]:
             new_loc = potential_loc
-            logger.info('!!!Destination reached!!!')
+            if Thing.Verbose > 0:
+                logger.info('!!!Destination reached!!!')
                     
         # Vehicle may move over the field
         elif idx == self.definitions.loc['Field', COL_CATEGORY]:
@@ -180,7 +181,8 @@ class Vehicle(Thing):
         # Vehicle may not move thru a wall
         elif idx == self.definitions.loc['Wall', COL_CATEGORY]:
             new_loc = self.location
-            logger.info('Vehicle cost from Wall: ' + str(cost))
+            if Thing.Verbose > 0:
+                logger.info('Vehicle cost from Wall: ' + str(cost))
             
         # Rock cannot be pushed thru a Vehicle
         elif idx == self.definitions.loc['Vehicle', COL_CATEGORY]:
@@ -192,13 +194,15 @@ class Vehicle(Thing):
             thing = grid.find_thing_by_loc(potential_loc)
             thing.deleted = True
             new_loc = potential_loc # self.location
-            logger.info('Vehicle energy from Mushroom: ' + str(cost))
+            if Thing.Verbose > 0:
+                logger.info('Vehicle energy from Mushroom: ' + str(cost))
             
         # Cannot be moved over a cactus which remainslost
         elif idx == self.definitions.loc['Cactus', COL_CATEGORY]:
             thing = grid.find_thing_by_loc(potential_loc)
             new_loc = self.location
-            logger.info('Vehicle cost from Cactus: ' + str(cost))
+            if Thing.Verbose > 0:
+                logger.info('Vehicle cost from Cactus: ' + str(cost))
             
         # Rock can move, depending on the object before it
         elif idx == self.definitions.loc['Rock', COL_CATEGORY]:
@@ -208,21 +212,24 @@ class Vehicle(Thing):
                 thing.move(grid, direction)
                 new_loc = potential_loc
                 
-            logger.info('Vehicle cost from Rock: ' + str(cost))
+            if Thing.Verbose > 0:
+                logger.info('Vehicle cost from Rock: ' + str(cost))
 
         # Can move over a green dot which is lost
         elif idx == self.definitions.loc['Dot_green', COL_CATEGORY]:
             thing = grid.find_thing_by_loc(potential_loc, 'Dot_green')
             thing.deleted = True
             new_loc = potential_loc # self.location
-            logger.info('Vehicle energy from green dot: ' + str(cost))
+            if Thing.Verbose > 0:
+                logger.info('Vehicle energy from green dot: ' + str(cost))
             
         # Can move over a red dot which is lost
         elif idx == self.definitions.loc['Dot_red', COL_CATEGORY]:
             thing = grid.find_thing_by_loc(potential_loc)
             thing.deleted = True
             new_loc = potential_loc # self.location
-            logger.info('Vehicle energy from red dot: ' + str(cost))
+            if Thing.Verbose > 0:
+                logger.info('Vehicle energy from red dot: ' + str(cost))
             
         else:
             message = '*** Unknown field code in Rock.move: ' + str(idx)
@@ -346,7 +353,8 @@ class Rock(Thing):
             thing.deleted = True
             new_loc = potential_loc
             grid.grid_cells[new_loc] = self.definitions.loc['Rock', COL_CATEGORY]
-            logger.info(grid.print_grid(grid.grid_cells))
+            if Thing.Verbose > 0:
+                logger.info(grid.print_grid(grid.grid_cells))
             
         # Rock can move, depending on the object before it
         elif idx == self.definitions.loc['Rock', COL_CATEGORY]:
@@ -355,7 +363,7 @@ class Rock(Thing):
             new_loc = potential_loc
             
         # if
-        if not thing is None:
+        if not thing is None and Thing.Verbose > 0:
             logger.info('Rock added cost from ' + str(thing.type) + 
                         ' cost = ' + str(cost))
     

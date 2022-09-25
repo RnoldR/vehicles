@@ -10,6 +10,8 @@ import random
 import numpy as np
 import pandas as pd
 
+#from grid_objects import Start, Destination, Dot_green
+
 from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ENERGY, COL_ICON, COL_CLASS
 
 # choose icon style (1-3)    
@@ -37,6 +39,9 @@ class Grid:
             raise ValueError("grid_size must be a tuple: (width, height).")
         
         self.grid_size = grid_size
+        self.turns: int = 0
+        self.start = None
+        self.destination = None
 
         # grid member variables
         self.things_by_id = {}
@@ -123,9 +128,23 @@ class Grid:
         return
 
     ### set_tracker ###
+
+    def set_start(self, ThingClass, loc: tuple) -> None:
+        self.start = self.insert_thing(ThingClass, loc)
+        
+        return
+
+    ### set_start ###
+    
+    def set_destination(self, ThingClass, loc: tuple) -> None:
+        self.destination = self.insert_thing(ThingClass, loc)
+        
+        return
+
+    ### set_destination ###
     
     def process_command(self, command: str, grid_pos: tuple, 
-                        definitions: pd.DataFrame):
+                        definitions: pd.DataFrame) -> None:
         
         if command == 'P':
             logger.info(self.print_grid(self.grid_cells))
@@ -147,6 +166,9 @@ class Grid:
 
                     logger.info('Inserted ' + str(thing.type) + ' at ' +
                                 str(thing.location))
+
+                # if
+            # if
                 
         elif command == 'f':
             thing = self.grid.find_thing_by_loc(grid_pos)
@@ -156,7 +178,10 @@ class Grid:
             else:
                 logger.info('Removed ' + str(thing.type) + ' at ' +
                             str(thing.location))
+            # if
         
+        # if
+
         return
 
     ### process_command###
@@ -252,6 +277,8 @@ class Grid:
     ### move_things ###
     
     def next_turn(self):
+        self.turns += 1
+
         # Move all things
         for id in self.things_by_id:
             thing = self.things_by_id[id]
@@ -271,6 +298,21 @@ class Grid:
         return
 
     ### next_turn ###
+
+    def destination_reached(self, max_turns: int = 0) -> bool:
+
+        if max_turns > 0 and self.turns >= max_turns:
+            return True
+
+        elif self.tracked.location[0] == self.destination.location[0] and \
+           self.tracked.location[1] == self.destination.location[1]:
+
+            return True
+
+        else:
+            return False
+
+    ### destination_reached ###
     
     def get_n_things(self, type_str):
         n = 0
