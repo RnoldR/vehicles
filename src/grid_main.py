@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 from create_logger import create_logger
 logger = create_logger.create_log('grid-vehicles.log')
 
@@ -241,54 +244,8 @@ def test_move_auto(res_path: str, icon_style: int):
 ### test_move_auto ###
 
 
-def loop_one_grid(res_path: str, icon_style: int):
-    random.seed(42)
-
-    rows = 15
-    cols = 20
-
-    definitions = load_thing_definitions(res_path, icon_style)
-    
-    # create a generator for this test
-    generator = FixedGenerator(n_mushrooms=5, n_cactuses=4, n_rocks=3)
-
-    # create a grid with appropriate number of columns and rows
-    grid = Grid(generator, grid_size=(cols, rows), definitions=definitions)
-
-    logger.info(grid.print_grid(grid.grid_cells))
-        
-    energy = grid.get_vehicles_energy(Vehicle)
-    time.sleep(1)
-
-    # set vehicle on the start position and have it tracked by the grid
-    vehicle_to_be_tracked = grid.insert_thing(Simple, grid.start.location)
-    grid.set_tracker(vehicle_to_be_tracked)
-
-    try:
-        while not grid.destination_reached() and energy > 0:
-            grid.next_turn()
-            energy = grid.tracked.energy
-
-        # while
-
-    finally:
-        time.sleep(2)
-        pygame.quit()
-
-    # try..except
-
-    if grid.destination_reached():
-        logger.info(f'Destination reached in {grid.turns} turns.')
-        
-    return
-    
-### test_move_auto ###
-
-
 def test_many_vehicles(res_path: str, icon_style: int, n: int) -> int:
     def loop_one_grid(w_wall: float, w_mush: float, w_cact: float, w_dest: float):
-        random.seed(42)
-
         rows = 15
         cols = 20
 
@@ -324,17 +281,21 @@ def test_many_vehicles(res_path: str, icon_style: int, n: int) -> int:
 
         # try..except
 
+        reached = 0
         if grid.destination_reached():
+            reached = 1
             logger.info(f'Destination reached in {grid.turns} turns.')
             
-        return grid.turns
+        return reached, grid.turns
         
-    ### test_move_auto ###
+    ### loop_one_grid ###
+
+    random.seed(42)
 
     Thing.Verbose = 0
 
     score = pd.DataFrame(index = range(n), columns = ('Wall', 'Mushroom', 
-        'Cactus', 'Destination', 'Turns'))
+        'Cactus', 'Destination', 'Reached', 'Turns'))
 
     for i in range(n):
         w_wall: float = 2 * random.random() - 1
@@ -342,13 +303,14 @@ def test_many_vehicles(res_path: str, icon_style: int, n: int) -> int:
         w_cact: float = 2 * random.random() - 1
         w_dest: float = 2 * random.random() - 1
 
-        turns = loop_one_grid(w_wall, w_mush, w_cact, w_dest)
+        reached, turns = loop_one_grid(w_wall, w_mush, w_cact, w_dest)
 
         score.loc[i, 'Wall'] = w_wall
         score.loc[i, 'Mushroom'] = w_mush
         score.loc[i, 'Cactus'] = w_cact
         score.loc[i, 'Destination'] = w_dest
-        score.loc[i, 'Wall'] = turns
+        score.loc[i, 'Reached'] = reached
+        score.loc[i, 'Turns'] = turns
 
         logger.info(f'loop {i}: {turns}')
 

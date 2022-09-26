@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Aug  5 20:25:15 2021
-
-@author: arnold
-"""
-
 # Code initialisatie: logging
 import logging
 logger = logging.getLogger()
@@ -28,17 +20,6 @@ from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ENERGY, COL_ICON, COL_
 class Thing: pass
 class Grid: pass
 
-class Sensor():
-    def __init__(self, owner: Thing, grid: Grid):
-        self.owner = owner
-        self.grid = grid
-        
-        return
-    
-    ### __init__ ###
-    
-### Class: Sensor ###
-        
 class Thing():
     # Define static sequence number to have unique ID's
     Seq: int = 0

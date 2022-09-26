@@ -1,10 +1,6 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Aug  5 20:17:21 2021
-
-@author: arnold
-"""
+# Code initialisatie: logging
+import logging
+logger = logging.getLogger()
 
 import sys
 import random
@@ -14,85 +10,11 @@ import pandas as pd
 from math import sqrt
 
 from grid import Grid, COMPASS
-from grid_thing import Sensor, Thing
+from grid_thing import Thing
+from grid_objects import Vehicle
+from grid_sensors import Eye
+from grid_thing_data import COL_CATEGORY, COL_ENERGY
 
-from grid_objects import Wall, Vehicle, Mushroom, Cactus, Rock, \
-    Start, Destination, Dot_green
-
-from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ENERGY, COL_ICON, COL_CLASS
-
-# Code initialisatie: logging
-import logging
-logger = logging.getLogger()
-
-class Eye(Sensor):
-    def __init__(self, owner: Thing, grid: Grid, sensitivity: int):
-        super().__init__(owner, grid)
-
-        self.sensitive_for: int = sensitivity
-        
-        return
-    
-    ### __init__  ###
-
-    @staticmethod    
-    def sensor_value(self, signal: float, x: int, y: int, id: int):
-
-        return (signal, x, y, id)
-
-    ### sensor_value ###
-    
-    def sense_objects(self, grid: Grid) -> dict:
-        """
-        Senses a square of the grid. The square is a dictionary with four
-        keys: (lower x, lower y, upper x, upper y). Only grid elements
-        within this square will be sensed.
-
-        Parameters
-        ----------
-        grid : Grid
-            The grid to be sensed.
-        square : tuple
-            dictionary with keys (lower x, lower y, upper x, upper y).
-        loc: (tuple)
-            Position of the sensor: tuple (x, y)
-
-        Returns
-        -------
-        A dictionary containg the normalized colors of all objects as rgb values.
-
-        """
-
-        # pre-select the objects this sensor is sensitive for        
-        things = [grid.things_by_id[k] for k in grid.things_by_id 
-                  if grid.things_by_id[k].category == self.sensitive_for]
-
-        perceptions = []
-        for thing in things:
-            if thing.category == self.sensitive_for:
-                # signal is mass
-                signal = thing.mass
-
-                # normalize mass by diving by max mass   
-                norm_signal = signal / Thing.MaxMass
-
-                # add to total perceptions
-                perceptions.append((norm_signal, thing.location[0], thing.location[1], thing.id))     
-
-            # if
-
-        # for  
-
-        # sort by normalized signal strength in descending order
-        if len (perceptions) > 0:
-            perceptions = sorted(perceptions, key=lambda tup: tup[0], reverse = True)
-
-        # if
-        
-        return perceptions
-    
-    ### sense ###
-    
 class Simple(Vehicle):
     def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
         super().__init__(location, definitions, grid)

@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from grid import Grid, COMPASS
-from grid_thing import Sensor, Thing
+from grid_thing import Thing
 
 from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ENERGY, COL_ICON, COL_CLASS
 
@@ -19,6 +19,7 @@ from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ENERGY, COL_ICON, COL_
 import logging
 logger = logging.getLogger()
 
+"""
 class Eye(Sensor):
     def __init__(self, category: int):
         super().__init__()
@@ -30,25 +31,6 @@ class Eye(Sensor):
     ### __init__  ###
     
     def sense_objects(self, grid: Grid, square: dict) -> dict:
-        """
-        Senses a square of the grid. The square is a dictionary with four
-        keys: (lower x, lower y, upper x, upper y). Only grid elements
-        within this square will be sensed.
-
-        Parameters
-        ----------
-        grid : Grid
-            The grid to be sensed.
-        square : tuple
-            dictionary with keys (lower x, lower y, upper x, upper y).
-        loc: (tuple)
-            Position of the sensor: tuple (x, y)
-
-        Returns
-        -------
-        A dictionary containg the normalized colors of all objects as rgb values.
-
-        """
         
         perceptions = []
         for id, thing in grid.things_by_id:
@@ -78,25 +60,6 @@ class Eye(Sensor):
     ### sense ###
     
     def sense_square(self, grid: Grid, square: dict, loc: tuple) -> dict:
-        """
-        Senses a square of the grid. The square is a dictionary with four
-        keys: (lower x, lower y, upper x, upper y). Only grid elements
-        within this square will be sensed.
-
-        Parameters
-        ----------
-        grid : Grid
-            The grid to be sensed.
-        square : tuple
-            dictionary with keys (lower x, lower y, upper x, upper y).
-        loc: (tuple)
-            Position of the sensor: tuple (x, y)
-
-        Returns
-        -------
-        A dictionary containg the normalized colors of all objects as rgb values.
-
-        """
         rgb = {'r': 0, 'g': 0, 'b': 0}
         n = 0
         for x in range(square['lower x'], square['upper x']):
@@ -122,7 +85,7 @@ class Eye(Sensor):
     ### sense ###
     
 ### Class: Eye ###
-
+"""
 class Wall(Thing):
     def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
         super().__init__(location, definitions, grid)
