@@ -14,7 +14,7 @@ from ga import ga
 from grid_objects import Wall, Mushroom, Cactus, Start, Destination
 from grid_vehicles import Simple
 
-#from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ENERGY, COL_ICON, COL_CLASS
+#from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_MASS, COL_ICON, COL_CLASS
 
 # Code initialisatie: logging
 import logging
@@ -101,6 +101,7 @@ def fitness_simple_vehicle(data: ga.Data, criterion: ga.Criterion):
     # fetch the parameters from data
     res_path = data.data_dict['res_path']
     icon_style = data.data_dict['icon_style']
+    verbose = data.data_dict['verbose']
     
     rows = 15
     cols = 20
@@ -113,10 +114,9 @@ def fitness_simple_vehicle(data: ga.Data, criterion: ga.Criterion):
                 grid_size = (cols, rows), 
                 res_path = res_path, 
                 icon_style = icon_style,
-                verbose = 0
+                verbose = verbose,
                )
 
-    energy = grid.get_vehicles_energy(Simple)
     time.sleep(1)
 
     w_wall = data.data_dict['w_wall']
@@ -129,11 +129,11 @@ def fitness_simple_vehicle(data: ga.Data, criterion: ga.Criterion):
     vehicle_to_be_tracked.set_weights(w_wall, w_mush, w_cact, w_dest)
     grid.set_tracker(vehicle_to_be_tracked)
 
-    energy = 1
+    mass = grid.get_vehicles_mass(Simple)
     try:
-        while not grid.destination_reached(1000) and energy > 0:
+        while not grid.destination_reached(1000) and mass > 0:
             grid.next_turn()
-            energy = grid.tracked.energy
+            mass = grid.tracked.mass
 
         # while
 
@@ -147,13 +147,11 @@ def fitness_simple_vehicle(data: ga.Data, criterion: ga.Criterion):
         reached = 1
         logger.info(f'Destination reached in {grid.turns} turns.')
 
-    total = grid.turns
-    if reached == 0:
-        total *= total
+    mass = grid.get_vehicles_mass(Simple)
     
     return {'reached': reached,
             'turns': grid.turns,
-            'total': total,
+            'mass': mass,
            }
 
 ### fitness_simple_vehicle ###
@@ -199,11 +197,11 @@ def analyse_simple_vehicle(X, y, res_path: str, icon_style: int):
 
     ### variables_ga ###
 
-    fitnesses = ['cpu', 'reached', 'turns', 'total']
-    criterion = ga.Criterion(fitnesses, fitnesses[3], 'le', 1.0)
+    fitnesses = ['cpu', 'reached', 'turns', 'mass']
+    criterion = ga.Criterion(fitnesses, fitnesses[3], 'ge', 1.0)
 
     winners = ga.run(X, y, 
-                  population_size = 10,
+                  population_size = 20,
                   iterations = 10, 
                   prepare_data = prepare_data,
                   method = ga.METHOD_ROULETTE,
@@ -216,6 +214,6 @@ def analyse_simple_vehicle(X, y, res_path: str, icon_style: int):
                   verbose = variables['verbose'],
                  )
 
-    return
+    return winners
 
 ### analyse_simple_vehicle ###                

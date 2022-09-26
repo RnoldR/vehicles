@@ -11,8 +11,6 @@ import random
 import numpy as np
 import pandas as pd
 
-import grid_thing_data
-
 from grid_viewer import GridView2D
 from grid import Grid, GridGenerator
 
@@ -20,7 +18,7 @@ from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ICON, COL_CLASS
 
 from grid_thing import Thing
 from grid_objects import Wall, Vehicle, Mushroom, Cactus, Rock, \
-    Start, Destination, Dot_green
+    Start, Destination, DotGreen
 from grid_vehicles import Simple
 from grid_ga import analyse_simple_vehicle
 
@@ -176,15 +174,15 @@ def test_move_around(res_path: str, icon_style: int):
         
     grid_viewer.update_screen()
     grid_viewer.direction = "X"
-    energy = grid.get_vehicles_energy(Vehicle)
+    mass = grid.get_vehicles_mass(Vehicle)
     time.sleep(1)
 
     try:
-        while not grid_viewer.game_over and energy > 0:
+        while not grid_viewer.game_over and mass > 0:
             grid_viewer.get_events()
             grid_viewer.move_things()
             grid_viewer.update_screen()
-            energy = grid.get_vehicles_energy(Vehicle)
+            mass = grid.get_vehicles_mass(Vehicle)
    
     finally:
         time.sleep(2)
@@ -195,7 +193,8 @@ def test_move_around(res_path: str, icon_style: int):
 ### test_move_around ###
 
 
-def test_move_auto(res_path: str, icon_style: int, generator):
+def test_move_auto(res_path: str, icon_style: int, generator,
+                   w_wall = -0.75, w_mush = 0.5, w_cact = -1.0, w_dest = 1.0):
     screen_width = 700
     screen_height = 700
     rows = 15
@@ -212,7 +211,7 @@ def test_move_auto(res_path: str, icon_style: int, generator):
         
     # set vehicle on the start position and have it tracked by the grid
     vehicle_to_be_tracked = grid.insert_thing(Simple, grid.start.location)
-    vehicle_to_be_tracked.set_weights(-0.75, 0.5, -1.0, 2.0)
+    vehicle_to_be_tracked.set_weights(w_wall, w_mush, w_cact, w_dest)
     vehicle_to_be_tracked.leave_trace = True
     grid.set_tracker(vehicle_to_be_tracked)
 
@@ -221,16 +220,16 @@ def test_move_auto(res_path: str, icon_style: int, generator):
     grid_viewer.update_screen()
     grid_viewer.direction = "X"
 
-    energy = grid.get_vehicles_energy(Vehicle)
+    mass = grid.get_vehicles_mass(Vehicle)
     time.sleep(1)
 
     try:
-        while not grid.destination_reached() and not grid_viewer.game_over and energy > 0:
+        while not grid.destination_reached() and not grid_viewer.game_over and mass > 0:
             # grid_viewer.get_events()
             # grid_viewer.move_things()
             grid_viewer.next_turn()
             grid_viewer.update_screen()
-            energy = grid.get_vehicles_energy(Vehicle)
+            mass = grid.get_vehicles_mass(Vehicle)
             time.sleep(0.25)
 
     finally:
@@ -260,7 +259,7 @@ def test_many_vehicles(res_path: str, icon_style: int, generator, n: int) -> int
 
         logger.info(grid.print_grid(grid.grid_cells))
             
-        energy = grid.get_vehicles_energy(Vehicle)
+        mass = grid.get_vehicles_mass(Vehicle)
         time.sleep(1)
 
         # set vehicle on the start position and have it tracked by the grid
@@ -268,11 +267,10 @@ def test_many_vehicles(res_path: str, icon_style: int, generator, n: int) -> int
         vehicle_to_be_tracked.set_weights(w_wall, w_mush, w_cact, w_dest)
         grid.set_tracker(vehicle_to_be_tracked)
 
-        energy = 1
         try:
-            while not grid.destination_reached(1000) and energy > 0:
+            while not grid.destination_reached(1000) and mass > 0:
                 grid.next_turn()
-                energy = grid.tracked.energy
+                mass = grid.tracked.mass
 
             # while
 
@@ -322,9 +320,26 @@ def test_many_vehicles(res_path: str, icon_style: int, generator, n: int) -> int
 ### test_many_vehicles ###
 
 
+def test_ga(res_path: str, icon_style: int):
+    winners = analyse_simple_vehicle(None, None, res_path, 1)
+    ga = winners.population[0]
+    w_wall = ga.get_var('w_wall')
+    w_mush = ga.get_var('w_mushroom')
+    w_cact = ga.get_var('w_cactus')
+    w_dest = ga.get_var('w_target')
+
+    test_move_auto(res_path, 1, FixedGenerator, w_wall, w_mush, w_cact,w_dest)
+
+    return
+
+### test_ga ###
+
+
 if __name__ == "__main__":
     res_path='/media/i-files/home/arnold/development/python/ml/vehicles'
 
-    test_move_auto(res_path, 1, FixedGenerator)
+    #test_move_around(res_path, 1)
+    # test_move_auto(res_path, 1, FixedGenerator, -0.5, 0.5, -1.0, 0.5)
     #test_many_vehicles(res_path, 1, FixedGenerator, 10)
-    #analyse_simple_vehicle(None, None, res_path, 1)
+    test_ga(res_path, 1)
+   

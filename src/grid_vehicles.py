@@ -14,15 +14,15 @@ from grid_thing import Thing
 from grid_thing_data import COMPASS
 from grid_objects import Vehicle
 from grid_sensors import Eye
-from grid_thing_data import COL_CATEGORY, COL_ENERGY
+from grid_thing_data import COL_CATEGORY, COL_MASS
 
 class Simple(Vehicle):
     def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
         super().__init__(location, definitions, grid)
         
-        self.type = 'Vehicle'
-        self.category = self.definitions.loc[self.type, COL_CATEGORY]
-        self.energy = self.definitions.loc[self.type, COL_ENERGY]
+        # self.type = 'Vehicle'
+        # self.category = self.definitions.loc[self.type, COL_CATEGORY]
+        # self.mass = self.definitions.loc[self.type, COL_MASS]
         self.direction = 'X'
 
         # create basic sensors
@@ -115,7 +115,7 @@ class Simple(Vehicle):
 
         # evaluate each possible move
         for move in possible_moves:
-            energy = 0
+            mass = 0
 
             # look for all perceived objects
             for cat in perceptions:
@@ -141,18 +141,18 @@ class Simple(Vehicle):
                     # and by weight of this category
                     weighted_signal = self.weights[cat] * signal_strength
 
-                    # add to energy
-                    energy += weighted_signal
+                    # add to mass
+                    mass += weighted_signal
 
-                    logger.debug(cat, move, val, perception, d, signal_strength, weighted_signal, energy)
+                    logger.debug(cat, move, val, perception, d, signal_strength, weighted_signal, mass)
 
                 # if
             # for
 
-            evaluated_moves[move] = energy
+            evaluated_moves[move] = mass
 
-            if energy > max_val:
-                max_val = energy
+            if mass > max_val:
+                max_val = mass
                 max_move = move
 
         # for

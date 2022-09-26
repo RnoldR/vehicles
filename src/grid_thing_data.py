@@ -1,12 +1,9 @@
-import os
-import pandas as pd
-
 # choose icon style (1-3)    
 ICON_STYLE = 1
 
 COL_CATEGORY = 'Category'
-COL_ENERGY = 'Energy'
-COL_EXTRA = 'Extra'
+COL_MASS = 'Mass'
+COL_GROWTHFACTOR = 'GrowthFactor'
 COL_CHAR = 'Char'
 COL_ICON = 'Icon'
 COL_CLASS = 'Class'

@@ -154,3 +154,4 @@ venv.bak/
 dmypy.json
 vacature-text/src/pdelobelle/robbert-v2-dutch-base-finetuned-emotion/checkpoint-1000/config.json
 vacature-text/src/Chapter-02_classification.ipynb
+src/*.old

@@ -353,16 +353,16 @@ class Grid:
 
     ### get_n_things ###
        
-    def get_vehicles_energy(self, ThingClass):
-        energy = 0
+    def get_vehicles_mass(self, ThingClass):
+        mass = 0
         for id in self.things_by_id:
             thing = self.things_by_id[id]
             if isinstance(thing, ThingClass):
-                energy += thing.energy
+                mass += thing.mass
                 
-        return energy
+        return mass
 
-    ### get_vehicles_energy ###
+    ### get_vehicles_mass ###
 
     def load_thing_definitions(self, res_path: str, style: int):
         # load the csv file with Thing definitions into dataframe

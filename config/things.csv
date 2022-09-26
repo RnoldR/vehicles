@@ -1,11 +1,11 @@
-Name;Category;Energy;Extra;Char;Icon
+Name;Category;Mass;GrowthFactor;Char;Icon
 Field;0;-0.01;0.0;" ";
 Wall;1;-0.1;0.0;"w";
-Vehicle;2;10.0;-0.01;"v";
+Vehicle;2;10.0;0.0;"v";
 Mushroom;3;1.0;0.01;"m";
 Cactus;4;-1.0;0.01;"c";
 Rock;5;-0.5;0.0;"r";
 Start;6;0;0.0;"s";
 Destination;7;10;0.0;"d";
-Dot_green;8;0.01;0.0;" ";
-Dot_red;9;-0.01;0.0;" ";
+DotGreen;8;0.01;0.0;" ";
+DotRed;9;-0.01;0.0;" ";

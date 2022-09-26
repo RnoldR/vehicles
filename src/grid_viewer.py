@@ -225,13 +225,12 @@ class GridView2D:
         text += f'Vehicle {vehicle.id}\n\n'
         text += f'  Location ({vehicle.location[0]}, '
         text += f'{vehicle.location[1]})\n'
-        text += f'  Mass: {vehicle.mass}\n'
-        text += f'  Energy: {vehicle.energy:.2f}\n'
+        text += f'  Mass: {vehicle.mass:.2f}\n'
 
         self.show_status(text)
         #self.txt(f'Mass: {self.grid.tracked.mass}', (5, 100))
-        caption = 'Turn: {:d} Energy {:.2f} - {:s}'.format(self.grid.turns,
-                         self.grid.tracked.energy, str(self.grid.tracked.location))
+        caption = 'Turn: {:d} Mass {:.2f} - {:s}'.format(self.grid.turns,
+                         self.grid.tracked.mass, str(self.grid.tracked.location))
                          
         pygame.display.set_caption(caption)
         logger.debug ('')
