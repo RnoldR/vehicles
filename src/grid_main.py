@@ -162,7 +162,7 @@ def test_move_around(res_path: str, icon_style: int):
     generator = RandomGenerator(n_mushrooms=5, n_cactuses=4, n_rocks=3)
 
     # create a grid with appropriate number of columns and rows
-    grid = Grid(generator(), 
+    grid = Grid(generator, 
                 grid_size = (cols, rows), 
                 res_path = res_path, 
                 icon_style = icon_style
@@ -212,6 +212,8 @@ def test_move_auto(res_path: str, icon_style: int, generator):
         
     # set vehicle on the start position and have it tracked by the grid
     vehicle_to_be_tracked = grid.insert_thing(Simple, grid.start.location)
+    vehicle_to_be_tracked.set_weights(-0.75, 0.5, -1.0, 2.0)
+    vehicle_to_be_tracked.leave_trace = True
     grid.set_tracker(vehicle_to_be_tracked)
 
     # define a grid viewer for the grid
@@ -232,12 +234,12 @@ def test_move_auto(res_path: str, icon_style: int, generator):
             time.sleep(0.25)
 
     finally:
-        time.sleep(2)
+        if grid.destination_reached():
+            logger.info(f'Destination reached in {grid.turns} turns.')
+        
+        time.sleep(20)
         pygame.quit()
 
-    if grid.destination_reached():
-        logger.info(f'Destination reached in {grid.turns} turns.')
-        
     return
     
 ### test_move_auto ###

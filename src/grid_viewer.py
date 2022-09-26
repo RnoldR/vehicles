@@ -24,9 +24,11 @@ class GridView2D:
                  title: str='', screen_size=(600, 600)):
         # Initialize PyGame 
         pygame.init()
+        pygame.font.init()
         self.clock = pygame.time.Clock()
         pygame.key.set_repeat(500, 100)
         self.robot = None
+
         # set grid        
         self.grid = grid
         self.grid_size = self.grid.grid_size
@@ -160,14 +162,51 @@ class GridView2D:
 
     ### next_turn ###
     
+    def blit_text(self, surface, text, pos, font, color=pygame.Color('black')):
+        # 2D array where each row is a list of words.
+        words = [word.split(' ') for word in text.splitlines()]  
+
+        # The width of a space.
+        space = font.size(' ')[0]
+
+        max_width, max_height = surface.get_size()
+        x, y = pos
+        for line in words:
+            for word in line:
+                word_surface = font.render(word, 0, color)
+                word_width, word_height = word_surface.get_size()
+
+                if x + word_width >= max_width:
+                    x = pos[0]  # Reset the x.
+                    y += word_height  # Start on new row.
+
+                # if
+
+                surface.blit(word_surface, (x, y))
+                x += word_width + space
+
+            # for
+
+            x = pos[0]  # Reset the x.
+            y += word_height  # Start on new row.
+
+        # for
+
+        return
+
+    ### blit_text ###
+
     def show_status(self, mess: str):
         # initialize font; must be called after 'pygame.init()' to avoid 'Font not Initialized' error
         myfont = pygame.font.SysFont("sans", 20)
 
-        # render text
-        label = myfont.render(mess, 1, (0, 0, 0))
         self.interface.fill((255, 255, 255))
-        self.interface.blit(label, (5, 5))
+        self.blit_text(self.interface, mess, (5, 5), myfont)
+
+        # render text
+        #label = myfont.render(mess, 1, (0, 0, 0))
+        #self.interface.fill((255, 255, 255))
+        #self.interface.blit(label, (5, 5))
 
     ### show_status ###
     
@@ -180,9 +219,17 @@ class GridView2D:
         Returns:
             None
         """
-                
-        self.show_status('Turn: ' + str(self.grid.turns))
         
+        vehicle = self.grid.tracked
+        text = f'Turn: {self.grid.turns}\n----------\n\n'
+        text += f'Vehicle {vehicle.id}\n\n'
+        text += f'  Location ({vehicle.location[0]}, '
+        text += f'{vehicle.location[1]})\n'
+        text += f'  Mass: {vehicle.mass}\n'
+        text += f'  Energy: {vehicle.energy:.2f}\n'
+
+        self.show_status(text)
+        #self.txt(f'Mass: {self.grid.tracked.mass}', (5, 100))
         caption = 'Turn: {:d} Energy {:.2f} - {:s}'.format(self.grid.turns,
                          self.grid.tracked.energy, str(self.grid.tracked.location))
                          
