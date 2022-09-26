@@ -30,7 +30,13 @@ class Thing: pass
 class GridGenerator: pass
 
 class Grid:
-    def __init__(self, generator=None, grid_size=(10,10), res_path=None, icon_style=1):
+    def __init__(self, 
+                 generator = None, 
+                 grid_size = (10,10), 
+                 res_path: str = '', 
+                 icon_style: int = 1,
+                 verbose: int = 1
+                ):
         # Assign parameters
         self.definitions = self.load_thing_definitions(res_path, icon_style)
         
@@ -42,6 +48,7 @@ class Grid:
         self.turns: int = 0
         self.start = None
         self.destination = None
+        self.verbose = verbose
 
         # grid member variables
         self.things_by_id = {}
@@ -103,8 +110,14 @@ class Grid:
         return strmat
     
     def insert_thing(self, ThingClass, loc) -> Thing:
+        # create thing from provided ThingClass
         thing = ThingClass(loc, self.definitions, self)
+        thing.Verbose = self.verbose
+
+        # assign symbol to grid cells
         self.grid_cells[loc] = self.definitions.loc[thing.type, COL_CATEGORY]
+
+        # insert thing into thing dictionary
         self.things_by_id[thing.id] = thing
         
         return thing
@@ -247,7 +260,9 @@ class Grid:
                         self.definitions.loc['Field', COL_CATEGORY]
                         
                 del self.things_by_id[id]
-                logger.info(str(thing.type) + ' removed: ' + str(id))
+
+                if self.verbose > 0:
+                    logger.info(str(thing.type) + ' removed: ' + str(id))
             else:
                 logger.warning('No ' + str(thing.type) + ' found: ' + str(id))
             
@@ -335,49 +350,11 @@ class Grid:
         return energy
 
     ### get_vehicles_energy ###
-    """
-    @staticmethod    
-    def load_config(filename: str):
-    """
-    #Load configuration from yaml file
 
-    #filename (str): name of configuration file
-    """
-
-        with open(filename) as yaml_data:
-            config = yaml.load(yaml_data, Loader=yaml.FullLoader)
-        
-        for key, value in config['Things'].items():
-            logger.debug(str(key) + ': ID = {:d}, cost = {:.2f}, growth = {:.2f}'.
-                         format(value[0], value[1], value[2]))
-            
-        return config['Things']
-    
-    # load_config #
-
-    @staticmethod    
-    def load_resources(resources, res_path: str, style: int=1): 
-        for key in resources:
-            filename = key.lower() + '-' + str(style) + '.png'
-            filename = os.path.join(res_path, filename)
-            
-            img = pygame.image.load(filename)
-            
-            resources[key].append(img)
-            
-        df = pd.DataFrame.from_dict(resources, orient='index',
-                                    columns=[COL_CATEGORY, 'Cost', 'Growth', 'Command', 'Image'])
-        
-        return df
-    
-    # load_resources #
-    """
     def load_thing_definitions(self, res_path: str, style: int):
         # load the csv file with Thing definitions into dataframe
         filename = '../config/things.csv' # os.path.join(res_path, 'config/things.csv')
         definitions = pd.read_csv(filename, sep=';', index_col='Name')
-
-        logger.info(str(definitions))
 
         # next load icon info from images is resource path
         for key in definitions.index:
@@ -457,8 +434,10 @@ class Grid:
             self.make_step(self.grid_cells, m, k)
 
         # while
-        
-        logger.info(self.print_grid(m))
+
+        if self.verbose > 0:
+            logger.info(self.print_grid(m))
+
         i, j = end
         k = m[i][j]
         the_path = [(i,j)]

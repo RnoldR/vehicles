@@ -7,11 +7,11 @@ import pandas as pd
 
 from math import sqrt
 
-from grid import Grid, COMPASS
-from grid_thing import Sensor, Thing
+from grid import Grid, GridGenerator
 
 from ga import ga
 
+from grid_objects import Wall, Mushroom, Cactus, Start, Destination
 from grid_vehicles import Simple
 
 #from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ENERGY, COL_ICON, COL_CLASS
@@ -21,36 +21,101 @@ import logging
 logger = logging.getLogger()
 
 
+class FixedGenerator(GridGenerator):
+    def __init__(self):
+        
+        return
+    
+    # __init__ #
+    
+    def generate(self, grid: Grid):
+        # Create walls around the grid
+        for x in range(grid.grid_size[0]):
+            grid.insert_thing(Wall, (x, 0))
+            grid.insert_thing(Wall, (x, grid.grid_size[1]-1))
+            
+        for y in range(grid.grid_size[1]):
+            grid.insert_thing(Wall, (0, y))
+            grid.insert_thing(Wall, (grid.grid_size[0]-1, y))
+
+        # create catuses
+        x_incr = 6
+        y_incr = 2
+        y = 2
+        n = 0
+        while y < grid.grid_size[1] - 1:
+            n %= 3
+            n += 1
+            x = n
+
+            while x < grid.grid_size[0] - 1:
+                grid.insert_thing(Cactus, (x, y))
+
+                x += x_incr
+
+            # while
+
+            y += y_incr
+
+        # while
+            
+        # create mushrooms
+        y = 3
+        n = 0
+        while y < grid.grid_size[1] - 1:
+            n %= 3
+            n += 4
+            x = n
+
+            while x < grid.grid_size[0] - 1:
+                grid.insert_thing(Mushroom, (x, y))
+
+                x += x_incr
+
+            # while
+
+            y += y_incr
+
+        # while
+
+        # create start upper left and destination lower right
+        self.init_pos: tuple = (1, 1)
+        grid.set_start(Start, self.init_pos)
+        grid.set_destination(Destination, (grid.grid_size[0]-2, grid.grid_size[1]-2))
+
+        return
+    
+    # generate #
+    
+### Class: FixedGenerator ###
+
+
 def prepare_data(X, y, split_fraction: float):
 
-    return
+    return None, None, None, None, None, None
 
 ### prepare_data ###
 
 
-def fitness_simple_vehicle(data: ga.Data, criterion: ga.Criterion, generator):
-    # fetch the ML data
-    X_train = data.X_train
-    X_val = data.X_val
-    y_train = data.y_train
-    y_val = data.y_val
-    
-    # fetch the parameters for the logistic regression from data
-    n_estimators = data.data_dict['n_estimators']
+def fitness_simple_vehicle(data: ga.Data, criterion: ga.Criterion):
+    # fetch the parameters from data
+    res_path = data.data_dict['res_path']
+    icon_style = data.data_dict['icon_style']
     
     rows = 15
     cols = 20
 
-    definitions = load_thing_definitions(res_path, icon_style)
-    
     # create a generator for this test
     #generator = FixedGenerator()
 
     # create a grid with appropriate number of columns and rows
-    grid = Grid(generator(), grid_size=(cols, rows), definitions=definitions)
+    grid = Grid(FixedGenerator(), 
+                grid_size = (cols, rows), 
+                res_path = res_path, 
+                icon_style = icon_style,
+                verbose = 0
+               )
 
-    logger.info(grid.print_grid(grid.grid_cells))
-        
     energy = grid.get_vehicles_energy(Simple)
     time.sleep(1)
 
@@ -94,7 +159,7 @@ def fitness_simple_vehicle(data: ga.Data, criterion: ga.Criterion, generator):
 ### fitness_simple_vehicle ###
 
 
-def analyse_simple_vehicle(X, y):
+def analyse_simple_vehicle(X, y, res_path: str, icon_style: int):
     split_fraction = 60000
 
     kick = {
@@ -119,6 +184,8 @@ def analyse_simple_vehicle(X, y):
                  'w_cactus': -0.75,
                  'w_target': 1.0,
                  'verbose': 0,
+                 'res_path': res_path,
+                 'icon_style': icon_style,
                 }
 
     def variables_ga(pop: ga.Population, data: ga.Data):
@@ -137,7 +204,7 @@ def analyse_simple_vehicle(X, y):
 
     winners = ga.run(X, y, 
                   population_size = 10,
-                  iterations = 50, 
+                  iterations = 10, 
                   prepare_data = prepare_data,
                   method = ga.METHOD_ROULETTE,
                   fitness_function = fitness_simple_vehicle,

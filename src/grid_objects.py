@@ -13,79 +13,12 @@ import pandas as pd
 from grid import Grid
 from grid_thing import Thing
 
-from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ENERGY, COL_ICON, COL_CLASS
+from grid_thing_data import COMPASS, COL_CATEGORY, COL_ENERGY, COL_ICON
 
 # Code initialisatie: logging
 import logging
 logger = logging.getLogger()
 
-"""
-class Eye(Sensor):
-    def __init__(self, category: int):
-        super().__init__()
-
-        self.sensitive_for = category
-        
-        return
-    
-    ### __init__  ###
-    
-    def sense_objects(self, grid: Grid, square: dict) -> dict:
-        
-        perceptions = []
-        for id, thing in grid.things_by_id:
-            if thing.category == self.sensitive_for:
-                # compute distance to perceived object
-                d = thing.d(self.owner.location)
-
-                # compute signal
-                signal = d * thing.mass 
-
-                # cnormalize signal by diving by max mass   
-                norm_signal = signal / thing.DefaultMass
-
-                # add to total perceptions
-                perceptions.append((norm_signal, thing.location[0], thing.location[1], id))     
-
-            # if
-
-        # for  
-
-        # sort by normalized signal strength in descending order
-        if len (perceptions) > 0:
-            perceptions = sorted(perceptions, key=lambda tup: tup[0], reverse = True)
-        
-        return perceptions
-    
-    ### sense ###
-    
-    def sense_square(self, grid: Grid, square: dict, loc: tuple) -> dict:
-        rgb = {'r': 0, 'g': 0, 'b': 0}
-        n = 0
-        for x in range(square['lower x'], square['upper x']):
-            for y in range(square['lower y'], square['upper y']):
-                if grid.grid_cells[x, y] != self.definitions.loc['Field', COL_CATEGORY]:
-                    # ... haal hier de kleuren op en sommeer ze in rgb
-                    # ... vergeet niet n bij te houden om te normaliseren
-                    # find 
-                    thing = grid.find_thing_by_loc((x, y))
-                    d = thing.d(loc)
-                    d2 = d * d
-                    for channel in thing.color:
-                        rgb[channel]  += thing.color[channel] / d2
-                        
-                    n += 1
-        
-        n *= 255
-        for channel in thing.color:
-            rgb[channel]  = [channel] / n
-            
-        return rgb
-    
-    ### sense ###
-    
-### Class: Eye ###
-"""
 class Wall(Thing):
     def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
         super().__init__(location, definitions, grid)
@@ -93,7 +26,7 @@ class Wall(Thing):
         self.type = 'Wall'
         self.category = self.definitions.loc[self.type, COL_CATEGORY]
         self.energy = self.definitions.loc[self.type, COL_ENERGY]
-        self.color = {'r': 255, 'g': 112, 'b': 67}
+
         
         return
 
@@ -107,7 +40,6 @@ class Vehicle(Thing):
         self.category = self.definitions.loc[self.type, COL_CATEGORY]
         self.energy = self.definitions.loc[self.type, COL_ENERGY]
         self.direction = 'X'
-        self.color = {'r': 0, 'g': 140, 'b': 180}
         
         return
     
@@ -219,7 +151,6 @@ class Mushroom(Thing):
         self.type = 'Mushroom'
         self.category = self.definitions.loc[self.type, COL_CATEGORY]
         self.energy = self.definitions.loc[self.type, COL_ENERGY]
-        self.color = {'r': 220, 'g': 80, 'b': 80}
         self.growth = 0.01
         
         return
@@ -245,7 +176,6 @@ class Cactus(Thing):
         self.type = 'Cactus'
         self.category = self.definitions.loc[self.type, COL_CATEGORY]
         self.energy = self.definitions.loc[self.type, COL_ENERGY]
-        self.color = {'r': 60, 'g': 150, 'b': 20}
         self.growth = 0.01
         
         return
@@ -271,7 +201,6 @@ class Rock(Thing):
         self.type = 'Rock'
         self.category = self.definitions.loc[self.type, COL_CATEGORY]
         self.energy = self.definitions.loc[self.type, COL_ENERGY]
-        self.color = {'r': 200, 'g': 200, 'b': 200}
         
         return
     
@@ -345,7 +274,6 @@ class Start(Thing):
         self.type = 'Start'
         self.category = self.definitions.loc[self.type, COL_CATEGORY]
         self.energy = self.definitions.loc[self.type, COL_ENERGY]
-        self.color = {'r': 0, 'g': 255, 'b': 20}
         self.visible = False
         self.mass = self.MaxMass
         
@@ -362,7 +290,6 @@ class Destination(Thing):
         self.type: str = 'Destination'
         self.category: int = self.definitions.loc[self.type, COL_CATEGORY]
         self.energy: float = self.definitions.loc[self.type, COL_ENERGY]
-        self.color = {'r': 230, 'g': 0, 'b': 30}
         self.visible = False
         self.mass = self.MaxMass
         
@@ -379,7 +306,6 @@ class Dot_green(Thing):
         self.type = 'Dot_green'
         self.category = self.definitions.loc[self.type, COL_CATEGORY]
         self.energy = self.definitions.loc[self.type, COL_ENERGY]
-        self.color = {'r': 0, 'g': 255, 'b': 0}
         self.visible = False
         
         return
@@ -395,7 +321,6 @@ class Dot_red(Thing):
         self.type = 'Dot_red'
         self.category = self.definitions.loc[self.type, COL_CATEGORY]
         self.energy = self.definitions.loc[self.type, COL_ENERGY]
-        self.color = {'r': 255, 'g': 0, 'b': 0}
         self.visible = False
         
         return

@@ -22,6 +22,7 @@ from grid_thing import Thing
 from grid_objects import Wall, Vehicle, Mushroom, Cactus, Rock, \
     Start, Destination, Dot_green
 from grid_vehicles import Simple
+from grid_ga import analyse_simple_vehicle
 
 # Initialize Pandas  display options such that the whole DataFrame is printed
 pd.options.display.max_rows = 999999
@@ -194,25 +195,19 @@ def test_move_around(res_path: str, icon_style: int):
 ### test_move_around ###
 
 
-def test_move_auto(res_path: str, icon_style: int):
+def test_move_auto(res_path: str, icon_style: int, generator):
     screen_width = 700
     screen_height = 700
     rows = 15
     cols = 20
 
-    # create a generator for this test
-    generator = FixedGenerator(n_mushrooms=5, n_cactuses=4, n_rocks=3)
-
     # create a grid with appropriate number of columns and rows
     grid = Grid(generator(), 
                 grid_size = (cols, rows), 
                 res_path = res_path, 
-                icon_style = icon_style
+                icon_style = icon_style,
                )
 
-    # define a grid viewer for the grid
-    grid_viewer = GridView2D(grid, grid.definitions, screen_size=(screen_width, screen_height))
-    
     logger.info(grid.print_grid(grid.grid_cells))
     # path = grid.find_route()[1:-1]
     # logger.info(path)
@@ -223,8 +218,11 @@ def test_move_auto(res_path: str, icon_style: int):
     vehicle_to_be_tracked = grid.insert_thing(Simple, grid.start.location)
     grid.set_tracker(vehicle_to_be_tracked)
 
+    # define a grid viewer for the grid
+    grid_viewer = GridView2D(grid, grid.definitions, screen_size=(screen_width, screen_height))
     grid_viewer.update_screen()
     grid_viewer.direction = "X"
+
     energy = grid.get_vehicles_energy(Vehicle)
     time.sleep(1)
 
@@ -235,7 +233,7 @@ def test_move_auto(res_path: str, icon_style: int):
             grid_viewer.next_turn()
             grid_viewer.update_screen()
             energy = grid.get_vehicles_energy(Vehicle)
-            time.sleep(0.5)
+            time.sleep(0.25)
 
     finally:
         time.sleep(2)
@@ -258,7 +256,8 @@ def test_many_vehicles(res_path: str, icon_style: int, generator, n: int) -> int
         grid = Grid(generator(), 
                     grid_size = (cols, rows), 
                     res_path = res_path, 
-                    icon_style = icon_style
+                    icon_style = icon_style,
+                    verbose = 0
                    )
 
         logger.info(grid.print_grid(grid.grid_cells))
@@ -296,8 +295,6 @@ def test_many_vehicles(res_path: str, icon_style: int, generator, n: int) -> int
 
     random.seed(42)
 
-    Thing.Verbose = 0
-
     score = pd.DataFrame(index = range(n), columns = ('Wall', 'Mushroom', 
         'Cactus', 'Destination', 'Reached', 'Turns'))
 
@@ -330,4 +327,6 @@ def test_many_vehicles(res_path: str, icon_style: int, generator, n: int) -> int
 if __name__ == "__main__":
     res_path='/media/i-files/home/arnold/development/python/ml/vehicles'
 
-    test_many_vehicles(res_path, 1, FixedGenerator, 10)
+    test_move_auto(res_path, 1, FixedGenerator)
+    #test_many_vehicles(res_path, 1, FixedGenerator, 10)
+    #analyse_simple_vehicle(None, None, res_path, 1)
