@@ -10,7 +10,7 @@ import random
 import numpy as np
 import pandas as pd
 
-from grid import Grid, COMPASS
+from grid import Grid
 from grid_thing import Thing
 
 from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ENERGY, COL_ICON, COL_CLASS

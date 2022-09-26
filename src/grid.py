@@ -12,11 +12,11 @@ import pandas as pd
 
 #from grid_objects import Start, Destination, Dot_green
 
-from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ENERGY, COL_ICON, COL_CLASS
+from grid_thing_data import COL_CATEGORY
 
 # choose icon style (1-3)    
 ICON_STYLE = 1
-
+"""
 # Vehicle directions
 COMPASS = {"N": (0, -1),
            "E": (1, 0),
@@ -24,15 +24,15 @@ COMPASS = {"N": (0, -1),
            "W": (-1, 0),
            "X": (0, 0)
           }
-
+"""
 # forward declarations of classes
 class Thing: pass
 class GridGenerator: pass
 
 class Grid:
-    def __init__(self, generator=None, grid_size=(10,10), definitions=None):
+    def __init__(self, generator=None, grid_size=(10,10), res_path=None, icon_style=1):
         # Assign parameters
-        self.definitions = definitions
+        self.definitions = self.load_thing_definitions(res_path, icon_style)
         
         # grid's configuration parameters
         if not (isinstance(grid_size, (list, tuple)) and len(grid_size) == 2):
@@ -335,14 +335,14 @@ class Grid:
         return energy
 
     ### get_vehicles_energy ###
-    
+    """
     @staticmethod    
     def load_config(filename: str):
-        """
-        Load configuration from yaml file
+    """
+    #Load configuration from yaml file
 
-        filename (str): name of configuration file
-        """
+    #filename (str): name of configuration file
+    """
 
         with open(filename) as yaml_data:
             config = yaml.load(yaml_data, Loader=yaml.FullLoader)
@@ -371,7 +371,39 @@ class Grid:
         return df
     
     # load_resources #
-    
+    """
+    def load_thing_definitions(self, res_path: str, style: int):
+        # load the csv file with Thing definitions into dataframe
+        filename = '../config/things.csv' # os.path.join(res_path, 'config/things.csv')
+        definitions = pd.read_csv(filename, sep=';', index_col='Name')
+
+        logger.info(str(definitions))
+
+        # next load icon info from images is resource path
+        for key in definitions.index:
+            filename = key.lower() + '-' + str(style) + '.png'
+            filename = os.path.join('images', filename)
+            filename = os.path.join(res_path, filename)
+            
+            definitions.loc[key, 'Icon'] = pygame.image.load(filename)
+
+        # for
+
+        # add a column to things containing the class definitions
+        """
+        definitions[COL_CLASS] = None
+        definitions.loc['Wall', COL_CLASS] = Wall
+        definitions.loc['Vehicle', COL_CLASS] = Vehicle
+        definitions.loc['Mushroom', COL_CLASS] = Mushroom
+        definitions.loc['Cactus', COL_CLASS] = Cactus
+        definitions.loc['Rock', COL_CLASS] = Rock
+        definitions.loc['Start', COL_CLASS] = Start
+        definitions.loc['Destination', COL_CLASS] = Destination
+        """
+        return definitions
+
+    ### load_thing_definitions ###
+
     def make_step(self, a: np.array, m: np.array, k: int):
         for i in range(m.shape[0]):
             for j in range(m.shape[1]):

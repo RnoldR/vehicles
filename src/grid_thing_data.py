@@ -11,7 +11,7 @@ COL_CHAR = 'Char'
 COL_ICON = 'Icon'
 COL_CLASS = 'Class'
 
-compass = {"N": (0, -1),
+COMPASS = {"N": (0, -1),
            "E": (1, 0),
            "S": (0, 1),
            "W": (-1, 0),

@@ -9,8 +9,9 @@ import pandas as pd
 
 from math import sqrt
 
-from grid import Grid, COMPASS
+from grid import Grid
 from grid_thing import Thing
+from grid_thing_data import COMPASS
 from grid_objects import Vehicle
 from grid_sensors import Eye
 from grid_thing_data import COL_CATEGORY, COL_ENERGY

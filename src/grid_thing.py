@@ -12,9 +12,9 @@ import pandas as pd
 
 from math import sqrt
 
-from grid import Grid, COMPASS
+from grid import Grid
 
-from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ENERGY, COL_ICON, COL_CLASS
+from grid_thing_data import COMPASS, ICON_STYLE, COL_CATEGORY, COL_ENERGY, COL_ICON, COL_CLASS
 
 # forward declaration
 class Thing: pass

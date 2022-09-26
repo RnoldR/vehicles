@@ -157,16 +157,19 @@ def test_move_around(res_path: str, icon_style: int):
     rows = 15
     cols = 20
 
-    definitions = load_thing_definitions(res_path, icon_style)
-    
     # create a generator for this test
     generator = RandomGenerator(n_mushrooms=5, n_cactuses=4, n_rocks=3)
 
     # create a grid with appropriate number of columns and rows
-    grid = Grid(generator, grid_size=(cols, rows), definitions=definitions)
+    grid = Grid(generator(), 
+                grid_size = (cols, rows), 
+                res_path = res_path, 
+                icon_style = icon_style
+               )
+
 
     # define a grid viewer for the grid
-    grid_viewer = GridView2D(grid, definitions, screen_size=(screen_width, screen_height))
+    grid_viewer = GridView2D(grid, grid.definitions, screen_size=(screen_width, screen_height))
     
     logger.info(grid.print_grid(grid.grid_cells))
         
@@ -197,16 +200,18 @@ def test_move_auto(res_path: str, icon_style: int):
     rows = 15
     cols = 20
 
-    definitions = load_thing_definitions(res_path, icon_style)
-    
     # create a generator for this test
     generator = FixedGenerator(n_mushrooms=5, n_cactuses=4, n_rocks=3)
 
     # create a grid with appropriate number of columns and rows
-    grid = Grid(generator, grid_size=(cols, rows), definitions=definitions)
+    grid = Grid(generator(), 
+                grid_size = (cols, rows), 
+                res_path = res_path, 
+                icon_style = icon_style
+               )
 
     # define a grid viewer for the grid
-    grid_viewer = GridView2D(grid, definitions, screen_size=(screen_width, screen_height))
+    grid_viewer = GridView2D(grid, grid.definitions, screen_size=(screen_width, screen_height))
     
     logger.info(grid.print_grid(grid.grid_cells))
     # path = grid.find_route()[1:-1]
@@ -244,18 +249,17 @@ def test_move_auto(res_path: str, icon_style: int):
 ### test_move_auto ###
 
 
-def test_many_vehicles(res_path: str, icon_style: int, n: int) -> int:
+def test_many_vehicles(res_path: str, icon_style: int, generator, n: int) -> int:
     def loop_one_grid(w_wall: float, w_mush: float, w_cact: float, w_dest: float):
         rows = 15
         cols = 20
 
-        definitions = load_thing_definitions(res_path, icon_style)
-        
-        # create a generator for this test
-        generator = FixedGenerator()
-
         # create a grid with appropriate number of columns and rows
-        grid = Grid(generator, grid_size=(cols, rows), definitions=definitions)
+        grid = Grid(generator(), 
+                    grid_size = (cols, rows), 
+                    res_path = res_path, 
+                    icon_style = icon_style
+                   )
 
         logger.info(grid.print_grid(grid.grid_cells))
             
@@ -323,39 +327,7 @@ def test_many_vehicles(res_path: str, icon_style: int, n: int) -> int:
 ### test_many_vehicles ###
 
 
-def load_thing_definitions(res_path: str, style: int):
-    # load the csv file with Thing definitions into dataframe
-    filename = '../config/things.csv' # os.path.join(res_path, 'config/things.csv')
-    definitions = pd.read_csv(filename, sep=';', index_col='Name')
-
-    logger.info(str(definitions))
-
-    # next load icon info from images is resource path
-    for key in definitions.index:
-        filename = key.lower() + '-' + str(style) + '.png'
-        filename = os.path.join('images', filename)
-        filename = os.path.join(res_path, filename)
-        
-        definitions.loc[key, 'Icon'] = pygame.image.load(filename)
-
-    # for
-
-    # add a column to things containing the class definitions
-    definitions[COL_CLASS] = None
-    definitions.loc['Wall', COL_CLASS] = Wall
-    definitions.loc['Vehicle', COL_CLASS] = Vehicle
-    definitions.loc['Mushroom', COL_CLASS] = Mushroom
-    definitions.loc['Cactus', COL_CLASS] = Cactus
-    definitions.loc['Rock', COL_CLASS] = Rock
-    definitions.loc['Start', COL_CLASS] = Start
-    definitions.loc['Destination', COL_CLASS] = Destination
-        
-    return definitions
-
-### load_resources ###
-
-
 if __name__ == "__main__":
     res_path='/media/i-files/home/arnold/development/python/ml/vehicles'
 
-    test_many_vehicles(res_path, 1, 10)
+    test_many_vehicles(res_path, 1, FixedGenerator, 10)
