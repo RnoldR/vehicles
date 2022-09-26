@@ -40,6 +40,7 @@ class Vehicle(Thing):
         self.category = self.definitions.loc[self.type, COL_CATEGORY]
         self.energy = self.definitions.loc[self.type, COL_ENERGY]
         self.direction = 'X'
+        self.leave_trace = False
         
         return
     
@@ -135,8 +136,12 @@ class Vehicle(Thing):
     
         self.energy += cost
         grid.grid_cells[self.location] = self.definitions.loc['Field', COL_CATEGORY]
+        old_loc = self.location
         self.location = new_loc
         grid.grid_cells[self.location] = self.definitions.loc['Vehicle', COL_CATEGORY]
+        
+        if self.leave_trace:
+            grid.add_thing(Dot_green, old_loc)
         
         return cost, self.location
     

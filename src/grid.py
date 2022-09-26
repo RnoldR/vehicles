@@ -53,6 +53,7 @@ class Grid:
         # grid member variables
         self.things_by_id = {}
         self.vehicles_by_id = {}
+        self.things_to_be_added_at_end_of_turn = []
         self.tracked = None
 
         # list of all cell locations
@@ -135,6 +136,11 @@ class Grid:
 
     ### insert_things ###
     
+    def add_thing(self, ThingClass, loc) -> Thing:
+        self.things_to_be_added_at_end_of_turn.append((ThingClass, loc))
+    
+    ### add_thing ###
+
     def set_tracker(self, thing: Thing) -> None:
         self.tracked = thing
         
@@ -298,6 +304,13 @@ class Grid:
         for id in self.things_by_id:
             thing = self.things_by_id[id]
             thing.next_turn()
+
+        # add things to grid because of end of turn
+        if len(self.things_to_be_added_at_end_of_turn) > 0:
+            for addition in self.things_to_be_added_at_end_of_turn:
+                self.insert_thing(addition[0], addition[1])
+
+            self.things_to_be_added_at_end_of_turn = []
             
         # remove things being flagged as deleted
         removes = []

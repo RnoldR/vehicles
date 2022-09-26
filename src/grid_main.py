@@ -209,10 +209,6 @@ def test_move_auto(res_path: str, icon_style: int, generator):
                )
 
     logger.info(grid.print_grid(grid.grid_cells))
-    # path = grid.find_route()[1:-1]
-    # logger.info(path)
-    # for location in path:
-    #     grid.insert_thing(Dot_green, location)
         
     # set vehicle on the start position and have it tracked by the grid
     vehicle_to_be_tracked = grid.insert_thing(Simple, grid.start.location)

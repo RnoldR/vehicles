@@ -24,6 +24,7 @@ class Simple(Vehicle):
         self.category = self.definitions.loc[self.type, COL_CATEGORY]
         self.energy = self.definitions.loc[self.type, COL_ENERGY]
         self.direction = 'X'
+        self.leave_trace = True
 
         self.set_weights(-0.75, 0.5, -1.0, 0.5)
 
