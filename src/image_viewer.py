@@ -44,8 +44,6 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 fh.setFormatter(formatter)
 ch.setFormatter(logging.Formatter('%(message)s'))
 
-#seed = 42
-#random.seed(seed)
 
 def read_h5 (h5_path):
     with h5py.File(h5_path, "r") as hdf5_file:

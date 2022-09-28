@@ -3,6 +3,7 @@ ICON_STYLE = 1
 
 COL_CATEGORY = 'Category'
 COL_MASS = 'Mass'
+COL_MAXMASS = 'MaxMass'
 COL_GROWTHFACTOR = 'GrowthFactor'
 COL_CHAR = 'Char'
 COL_ICON = 'Icon'

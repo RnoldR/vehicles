@@ -1,6 +1,5 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
+# import logging
+from telnetlib import GA
 from create_logger import create_logger
 logger = create_logger.create_log('grid-vehicles.log')
 
@@ -17,147 +16,24 @@ from grid import Grid, GridGenerator
 from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ICON, COL_CLASS
 
 from grid_thing import Thing
-from grid_objects import Wall, Vehicle, Mushroom, Cactus, Rock, \
-    Start, Destination, DotGreen
+from grid_objects import Wall, Vehicle, Mushroom, Cactus, Rock, Start, Destination, DotGreen
 from grid_vehicles import Simple
+from grid_generators import RandomGenerator, FixedGenerator
+
 from grid_ga import analyse_simple_vehicle
 
 # Initialize Pandas  display options such that the whole DataFrame is printed
 pd.options.display.max_rows = 999999
 pd.options.display.max_columns = 999999
 
-import random
-random.seed(41)
 
-class RandomGenerator(GridGenerator):
-    def __init__(self, n_mushrooms: int, n_cactuses: int, n_rocks: int):
-        self.n_mushrooms = n_mushrooms
-        self.n_cactuses = n_cactuses
-        self.n_rocks = n_rocks
-        
-        return
-    
-    # __init__ #
-    
-    def generate(self, grid: Grid):
-        # Create walls around the grid
-        for x in range(grid.grid_size[0]):
-            grid.insert_thing(Wall, (x, 0))
-            grid.insert_thing(Wall, (x, grid.grid_size[1]-1))
-            
-        for y in range(grid.grid_size[1]):
-            grid.insert_thing(Wall, (0, y))
-            grid.insert_thing(Wall, (grid.grid_size[0]-1, y))
-            
-        mid_x = int(grid.grid_size[0] / 2)
-        mid_y = int(grid.grid_size[1] / 2)
-        
-        for y in range(2, grid.grid_size[1] - 2):
-            grid.insert_thing(Wall, (mid_x, y))
-            
-        for x in range(1, mid_x -2):
-            grid.insert_thing(Wall, (x, mid_y))
-            
-        for x in range(mid_x, grid.grid_size[0] -2):
-            grid.insert_thing(Wall, (x, 3))
-            
-        # Start upper left and destination lower right
-        self.init_pos: tuple = (1, 1)
-        grid.START = grid.insert_thing(Start, self.init_pos)
-        grid.DESTINATION = grid.insert_thing(Destination, (grid.grid_size[0]-2, grid.grid_size[1]-2))
-        
-        # set vehicle on the start position and have it tracked by the grid
-        vehicle_to_be_tracked = grid.insert_thing(Vehicle, self.init_pos)
-        grid.set_tracker(vehicle_to_be_tracked)
-        
-        grid.insert_things(Mushroom, grid.generate_random_locs(self.n_mushrooms))
-        grid.insert_things(Cactus, grid.generate_random_locs(self.n_cactuses))
-        grid.insert_things(Rock, grid.generate_random_locs(self.n_rocks))
-
-        return
-    
-    # generate #
-    
-### Class: RandomGenerator ###
-
-
-class FixedGenerator(GridGenerator):
-    def __init__(self):
-        
-        return
-    
-    # __init__ #
-    
-    def generate(self, grid: Grid):
-        # Create walls around the grid
-        for x in range(grid.grid_size[0]):
-            grid.insert_thing(Wall, (x, 0))
-            grid.insert_thing(Wall, (x, grid.grid_size[1]-1))
-            
-        for y in range(grid.grid_size[1]):
-            grid.insert_thing(Wall, (0, y))
-            grid.insert_thing(Wall, (grid.grid_size[0]-1, y))
-
-        # create catuses
-        x_incr = 6
-        y_incr = 2
-        y = 2
-        n = 0
-        while y < grid.grid_size[1] - 1:
-            n %= 3
-            n += 1
-            x = n
-
-            while x < grid.grid_size[0] - 1:
-                grid.insert_thing(Cactus, (x, y))
-
-                x += x_incr
-
-            # while
-
-            y += y_incr
-
-        # while
-            
-        # create mushrooms
-        y = 3
-        n = 0
-        while y < grid.grid_size[1] - 1:
-            n %= 3
-            n += 4
-            x = n
-
-            while x < grid.grid_size[0] - 1:
-                grid.insert_thing(Mushroom, (x, y))
-
-                x += x_incr
-
-            # while
-
-            y += y_incr
-
-        # while
-
-        # create start upper left and destination lower right
-        self.init_pos: tuple = (1, 1)
-        grid.set_start(Start, self.init_pos)
-        grid.set_destination(Destination, (grid.grid_size[0]-2, grid.grid_size[1]-2))
-
-        return
-    
-    # generate #
-    
-### Class: FixedGenerator ###
-
-
-def test_move_around(res_path: str, icon_style: int):
+def test_move_around(res_path: str, icon_style: int, generator):
     screen_width = 700
     screen_height = 700
     rows = 15
-    cols = 20
+    cols = 21
 
     # create a generator for this test
-    generator = RandomGenerator(n_mushrooms=5, n_cactuses=4, n_rocks=3)
 
     # create a grid with appropriate number of columns and rows
     grid = Grid(generator, 
@@ -171,6 +47,11 @@ def test_move_around(res_path: str, icon_style: int):
     grid_viewer = GridView2D(grid, grid.definitions, screen_size=(screen_width, screen_height))
     
     logger.info(grid.print_grid(grid.grid_cells))
+
+    # set vehicle on the start position and have it tracked by the grid
+    vehicle_to_be_tracked = grid.insert_thing(Simple, grid.start.location)
+    vehicle_to_be_tracked.leave_trace = True
+    grid.set_tracker(vehicle_to_be_tracked)
         
     grid_viewer.update_screen()
     grid_viewer.direction = "X"
@@ -185,7 +66,7 @@ def test_move_around(res_path: str, icon_style: int):
             mass = grid.get_vehicles_mass(Vehicle)
    
     finally:
-        time.sleep(2)
+        time.sleep(60)
         pygame.quit()
         
     return
@@ -201,14 +82,14 @@ def test_move_auto(res_path: str, icon_style: int, generator,
     cols = 20
 
     # create a grid with appropriate number of columns and rows
-    grid = Grid(generator(), 
+    grid = Grid(generator, 
                 grid_size = (cols, rows), 
                 res_path = res_path, 
                 icon_style = icon_style,
                )
 
     logger.info(grid.print_grid(grid.grid_cells))
-        
+    
     # set vehicle on the start position and have it tracked by the grid
     vehicle_to_be_tracked = grid.insert_thing(Simple, grid.start.location)
     vehicle_to_be_tracked.set_weights(w_wall, w_mush, w_cact, w_dest)
@@ -278,7 +159,7 @@ def test_many_vehicles(res_path: str, icon_style: int, generator, n: int) -> int
             time.sleep(2)
             pygame.quit()
 
-        # try..except
+        # try..finally
 
         reached = 0
         if grid.destination_reached():
@@ -288,8 +169,6 @@ def test_many_vehicles(res_path: str, icon_style: int, generator, n: int) -> int
         return reached, grid.turns
         
     ### loop_one_grid ###
-
-    random.seed(42)
 
     score = pd.DataFrame(index = range(n), columns = ('Wall', 'Mushroom', 
         'Cactus', 'Destination', 'Reached', 'Turns'))
@@ -321,14 +200,63 @@ def test_many_vehicles(res_path: str, icon_style: int, generator, n: int) -> int
 
 
 def test_ga(res_path: str, icon_style: int):
-    winners = analyse_simple_vehicle(None, None, res_path, 1)
-    ga = winners.population[0]
-    w_wall = ga.get_var('w_wall')
-    w_mush = ga.get_var('w_mushroom')
-    w_cact = ga.get_var('w_cactus')
-    w_dest = ga.get_var('w_target')
+    levels = [3]
+    turns = [25]
+    max_keep = 5
+    initial_pop = []
+    for idx in range(len(levels)):
+        level = levels[idx]
 
-    test_move_auto(res_path, 1, FixedGenerator, w_wall, w_mush, w_cact,w_dest)
+        # the more difficult the level, the more ietrations
+        iters = turns[idx]
+        logger.info('')
+        logger.info(f'* * * Level {level} with {iters} generations * * *')
+
+        # get a population of GA's that performs the task well
+        winners = analyse_simple_vehicle(None, None, 
+                                         res_path, 
+                                         icon_style = 1, 
+                                         level = level, 
+                                         initial_pop = initial_pop,
+                                         iterations = iters,
+                                        )
+
+        # show performance of winning GA
+        ga = winners.population[0]
+        ga.show()
+
+        w_wall = ga.get_var('w_wall')
+        w_mush = ga.get_var('w_mushroom')
+        w_cact = ga.get_var('w_cactus')
+        w_dest = ga.get_var('w_target')
+
+        test_move_auto(res_path, 1, FixedGenerator(level = level), w_wall, w_mush, w_cact,w_dest)
+
+        # create an initial population to seed the next level with
+        initial_pop = []
+        for idx in range(max_keep):
+            ga: GA = winners.population[idx]
+            ga.show()
+            
+            # check if the GA reached the destination
+            reached = ga.fitness_scores['reached']
+
+            # if not, break the loop
+            if reached == 0:
+                break
+
+            # else append GA to initial_pop
+            else:
+                initial_pop.append(ga)
+
+            # if
+        # for
+
+        if len(initial_pop) > 0:
+            logger.info(f'Initial population of {len(initial_pop)} vehicles')
+
+        # if
+    # for
 
     return
 
@@ -336,10 +264,14 @@ def test_ga(res_path: str, icon_style: int):
 
 
 if __name__ == "__main__":
+    random.seed(42)
+
     res_path='/media/i-files/home/arnold/development/python/ml/vehicles'
 
-    #test_move_around(res_path, 1)
+    r_generator = RandomGenerator(n_mushrooms=5, n_cactuses=4, n_rocks=3)
+    f_generator = FixedGenerator(level = 4)
+    test_move_around(res_path, 1, f_generator)
     # test_move_auto(res_path, 1, FixedGenerator, -0.5, 0.5, -1.0, 0.5)
     #test_many_vehicles(res_path, 1, FixedGenerator, 10)
-    test_ga(res_path, 1)
+    #test_ga(res_path, 1)
    

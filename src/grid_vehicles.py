@@ -101,6 +101,37 @@ class Simple(Vehicle):
             _type_: advised move
         """
 
+        def get_signal(perceptions, cat):
+            if len(perceptions) < 1:
+                return 0
+
+            weighted_signal = 0
+            for perception in perceptions:
+                # compute its distance to this possible move
+                val = possible_moves[move]
+                d = (val[0] - perception[1]) ** 2 + (val[1] - perception[2]) ** 2
+                if d > 0:
+                    d = sqrt(d)
+                else:
+                    d = 0
+
+                # divide signal strength by distance
+                signal_strength = perception[0]
+                if d > 0:
+                    signal_strength /= d
+
+                # and by weight of this category
+                weighted_signal += self.weights[cat] * signal_strength
+
+                logger.debug(cat, move, val, perception, d, signal_strength, weighted_signal, mass)
+
+            # for
+
+            return weighted_signal
+
+        ### get_signal ###
+
+
         (x, y) = self.location
         possible_moves = {
                           'N': (x, y - 1),
@@ -119,12 +150,12 @@ class Simple(Vehicle):
 
             # look for all perceived objects
             for cat in perceptions:
-
                 # if there is an object perceived
                 if len(perceptions[cat]) > 0:
                     # get the first object (with the most signal strength)
-                    perception = perceptions[cat][0]
+                    perceps = perceptions[cat] # [0]]
 
+                    """
                     # compute its distance to this possible move
                     val = possible_moves[move]
                     d = (val[0] - perception[1]) ** 2 + (val[1] - perception[2]) ** 2
@@ -140,11 +171,13 @@ class Simple(Vehicle):
 
                     # and by weight of this category
                     weighted_signal = self.weights[cat] * signal_strength
-
-                    # add to mass
+    
                     mass += weighted_signal
+                    """
+                # add to mass
+                signal = get_signal(perceps, cat)
 
-                    logger.debug(cat, move, val, perception, d, signal_strength, weighted_signal, mass)
+                mass += signal
 
                 # if
             # for

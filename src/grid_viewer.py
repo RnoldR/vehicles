@@ -1,3 +1,7 @@
+# Code initialisatie: logging
+import logging
+logger = logging.getLogger()
+
 import os
 import time
 from pygame.constants import K_p
@@ -9,11 +13,7 @@ import pandas as pd
 
 from grid import Grid
 
-from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ICON, COL_CLASS
-
-# Code initialisatie: logging
-import logging
-logger = logging.getLogger()
+from grid_thing_data import COL_ICON
 
 # Initialize Pandas  display options such that the whole DataFrame is printed
 pd.options.display.max_rows = 999999
@@ -198,15 +198,13 @@ class GridView2D:
 
     def show_status(self, mess: str):
         # initialize font; must be called after 'pygame.init()' to avoid 'Font not Initialized' error
-        myfont = pygame.font.SysFont("sans", 20)
+        myfont = pygame.font.SysFont("sans", 18)
 
+        # fill surface with white
         self.interface.fill((255, 255, 255))
-        self.blit_text(self.interface, mess, (5, 5), myfont)
 
-        # render text
-        #label = myfont.render(mess, 1, (0, 0, 0))
-        #self.interface.fill((255, 255, 255))
-        #self.interface.blit(label, (5, 5))
+        # show the text
+        self.blit_text(self.interface, mess, (5, 5), myfont)
 
     ### show_status ###
     
@@ -221,20 +219,23 @@ class GridView2D:
         """
         
         vehicle = self.grid.tracked
-        text = f'Turn: {self.grid.turns}\n----------\n\n'
-        text += f'Vehicle {vehicle.id}\n\n'
-        text += f'  Location ({vehicle.location[0]}, '
-        text += f'{vehicle.location[1]})\n'
-        text += f'  Mass: {vehicle.mass:.2f}\n'
+        if vehicle is not None:
+            text = f'Turn: {self.grid.turns}\n----------\n\n'
+            text += f'Vehicle {vehicle.id}\n\n'
+            text += f'  Location ({vehicle.location[0]}, '
+            text += f'{vehicle.location[1]})\n'
+            text += f'  Mass: {vehicle.mass:.2f}\n'
 
-        self.show_status(text)
-        #self.txt(f'Mass: {self.grid.tracked.mass}', (5, 100))
-        caption = 'Turn: {:d} Mass {:.2f} - {:s}'.format(self.grid.turns,
-                         self.grid.tracked.mass, str(self.grid.tracked.location))
+            self.show_status(text)
+            #self.txt(f'Mass: {self.grid.tracked.mass}', (5, 100))
+            caption = 'Turn: {:d} Mass {:.2f} - {:s}'.format(self.grid.turns,
+                            vehicle.mass, str(vehicle.location))
                          
-        pygame.display.set_caption(caption)
-        logger.debug ('')
-        logger.debug('*** ' + caption)
+            pygame.display.set_caption(caption)
+            logger.debug ('')
+            logger.debug('*** ' + caption)
+
+        # if
 
         try:
             if not self.game_over:
@@ -255,6 +256,8 @@ class GridView2D:
             self.game_over = True
             self.quit_game()
             raise e
+
+        # try..except
 
         return 
 

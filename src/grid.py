@@ -10,24 +10,7 @@ import random
 import numpy as np
 import pandas as pd
 
-#from grid_objects import Start, Destination, Dot_green
-
 from grid_thing_data import COL_CATEGORY
-
-# choose icon style (1-3)    
-ICON_STYLE = 1
-"""
-# Vehicle directions
-COMPASS = {"N": (0, -1),
-           "E": (1, 0),
-           "S": (0, 1),
-           "W": (-1, 0),
-           "X": (0, 0)
-          }
-"""
-# forward declarations of classes
-class Thing: pass
-class GridGenerator: pass
 
 class Grid:
     def __init__(self, 
@@ -91,7 +74,7 @@ class Grid:
         else:
             return np.load(file_path, allow_pickle=False, fix_imports=True)
         
-    def generate_grid(self, generator: GridGenerator) -> None:
+    def generate_grid(self, generator) -> None:
         generator.generate(self)
          
         return
@@ -110,7 +93,7 @@ class Grid:
         
         return strmat
     
-    def insert_thing(self, ThingClass, loc) -> Thing:
+    def insert_thing(self, ThingClass, loc):
         # create thing from provided ThingClass
         thing = ThingClass(loc, self.definitions, self)
         thing.Verbose = self.verbose
@@ -136,12 +119,12 @@ class Grid:
 
     ### insert_things ###
     
-    def add_thing(self, ThingClass, loc) -> Thing:
+    def add_thing(self, ThingClass, loc):
         self.things_to_be_added_at_end_of_turn.append((ThingClass, loc))
     
     ### add_thing ###
 
-    def set_tracker(self, thing: Thing) -> None:
+    def set_tracker(self, thing) -> None:
         self.tracked = thing
         
         return
@@ -149,6 +132,21 @@ class Grid:
     ### set_tracker ###
 
     def set_start(self, ThingClass, loc: tuple) -> None:
+        """_summary_
+
+        Args:
+            ThingClass (_type_): _description_
+            loc (tuple): _description_
+        """
+        # remove all objects from start location
+        thing = self.find_thing_by_loc(loc)
+        while thing is not None:
+            self.remove_thing(thing)
+            thing = self.find_thing_by_loc(loc)
+        
+        # while
+
+        # insert start location
         self.start = self.insert_thing(ThingClass, loc)
         
         return
@@ -156,6 +154,15 @@ class Grid:
     ### set_start ###
     
     def set_destination(self, ThingClass, loc: tuple) -> None:
+        # remove all objects from destination location
+        thing = self.find_thing_by_loc(loc)
+        while thing is not None:
+            self.remove_thing(thing)
+            thing = self.find_thing_by_loc(loc)
+        
+        # while
+
+        # insert destination location
         self.destination = self.insert_thing(ThingClass, loc)
         
         return
@@ -379,17 +386,8 @@ class Grid:
 
         # for
 
-        # add a column to things containing the class definitions
-        """
-        definitions[COL_CLASS] = None
-        definitions.loc['Wall', COL_CLASS] = Wall
-        definitions.loc['Vehicle', COL_CLASS] = Vehicle
-        definitions.loc['Mushroom', COL_CLASS] = Mushroom
-        definitions.loc['Cactus', COL_CLASS] = Cactus
-        definitions.loc['Rock', COL_CLASS] = Rock
-        definitions.loc['Start', COL_CLASS] = Start
-        definitions.loc['Destination', COL_CLASS] = Destination
-        """
+        logger.info(str(definitions))
+
         return definitions
 
     ### load_thing_definitions ###

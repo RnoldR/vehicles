@@ -14,7 +14,7 @@ from math import sqrt
 
 from grid import Grid
 
-from grid_thing_data import COMPASS, COL_CATEGORY, COL_MASS, COL_GROWTHFACTOR
+from grid_thing_data import COMPASS, COL_CATEGORY, COL_MASS, COL_MAXMASS, COL_GROWTHFACTOR
 
 # forward declaration
 class Thing: pass
@@ -23,7 +23,6 @@ class Grid: pass
 class Thing():
     # Define static sequence number to have unique ID's
     Seq: int = 0
-    MaxMass: float = 100
     Verbose: int = 1
     
     def __init__(self, type: str, location: tuple, definitions: pd.DataFrame, grid: Grid):
@@ -43,6 +42,7 @@ class Thing():
         self.age: int = 0
         self.category = self.definitions.loc[self.type, COL_CATEGORY]
         self.mass = self.definitions.loc[self.type, COL_MASS]
+        self.max_mass = self.definitions.loc[self.type, COL_MAXMASS]
         self.growth  = self.definitions.loc[self.type, COL_GROWTHFACTOR]
         
         self.sensors = []
@@ -121,15 +121,15 @@ class Thing():
         elif idx == self.definitions.loc['Destination', COL_CATEGORY]:
             cost = self.definitions.loc['Destination', COL_MASS]
             may_move = 'yes'
-        elif idx == self.definitions.loc['Dot_green', COL_CATEGORY]:
-            cost = self.definitions.loc['Dot_green', COL_MASS]
+        elif idx == self.definitions.loc['DotGreen', COL_CATEGORY]:
+            cost = self.definitions.loc['DotGreen', COL_MASS]
             may_move = 'yes'
-        elif idx == self.definitions.loc['Dot_red', COL_CATEGORY]:
-            cost = self.definitions.loc['Dot_red', COL_MASS]
+        elif idx == self.definitions.loc['DotRed', COL_CATEGORY]:
+            cost = self.definitions.loc['DotRed', COL_MASS]
             may_move = 'yes'
         else:
             raise ValueError('*** Unknown field code in Rock.move:', idx)
-            
+
         return cost, may_move
     
     ### cost ###
@@ -140,9 +140,8 @@ class Thing():
 
         # and grow by a certain growthfactor
         self.mass += self.growth * self.mass
-        if self.mass > Thing.MaxMass:
-            self.mass = Thing.MaxMass
-            
+        if self.mass > self.max_mass:
+            self.mass = self.max_mass
 
         return
     ### next_turn ###

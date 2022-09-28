@@ -1,10 +1,6 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Aug  5 20:17:21 2021
-
-@author: arnold
-"""
+# Code initialisatie: logging
+import logging
+logger = logging.getLogger()
 
 import random
 import numpy as np
@@ -14,10 +10,6 @@ from grid import Grid
 from grid_thing import Thing
 
 from grid_thing_data import COMPASS, COL_CATEGORY, COL_MASS, COL_ICON
-
-# Code initialisatie: logging
-import logging
-logger = logging.getLogger()
 
 class Wall(Thing):
     def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
@@ -97,15 +89,15 @@ class Vehicle(Thing):
                 logger.info('Vehicle cost from Rock: ' + str(cost))
 
         # Can move over a green dot which is lost
-        elif idx == self.definitions.loc['Dot_green', COL_CATEGORY]:
-            thing = grid.find_thing_by_loc(potential_loc, 'Dot_green')
+        elif idx == self.definitions.loc['DotGreen', COL_CATEGORY]:
+            thing = grid.find_thing_by_loc(potential_loc, 'DotGreen')
             thing.deleted = True
             new_loc = potential_loc # self.location
             if self.Verbose > 0:
                 logger.info('Vehicle mass from green dot: ' + str(cost))
             
         # Can move over a red dot which is lost
-        elif idx == self.definitions.loc['Dot_red', COL_CATEGORY]:
+        elif idx == self.definitions.loc['DotRed', COL_CATEGORY]:
             thing = grid.find_thing_by_loc(potential_loc)
             thing.deleted = True
             new_loc = potential_loc # self.location
@@ -228,7 +220,7 @@ class Start(Thing):
         super().__init__('Start', location, definitions, grid)
 
         self.visible = False
-        self.mass = self.MaxMass
+        self.mass = self.max_mass
         
         return
     
@@ -241,7 +233,7 @@ class Destination(Thing):
         super().__init__('Destination', location, definitions, grid)
 
         self.visible = False
-        self.mass = self.MaxMass
+        self.mass = self.max_mass
         
         return
     
