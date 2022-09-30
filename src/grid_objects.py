@@ -9,11 +9,11 @@ import pandas as pd
 from grid import Grid
 from grid_thing import Thing
 
-from grid_thing_data import COMPASS, COL_CATEGORY, COL_MASS, COL_ICON
+from grid_thing_data import ACTIONS, COMPASS, COL_CATEGORY
 
 class Wall(Thing):
     def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
-        super().__init__('Wall', location, definitions, grid)
+        super().__init__(location, definitions, grid)
         
         return
 
@@ -21,10 +21,11 @@ class Wall(Thing):
 
 class Vehicle(Thing):
     def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
-        super().__init__('Vehicle', location, definitions, grid)
+        super().__init__(location, definitions, grid)
         
         self.direction = 'X'
         self.leave_trace = False
+        self.destination_reached = False
         
         return
     
@@ -35,35 +36,45 @@ class Vehicle(Thing):
         self.direction = "X"
         
         if direction == "X":
-            direction = random.sample(['N', 'E', 'S', 'W'], 1)[0]
+            direction = random.sample(ACTIONS, 1)[0]
             
+        finished = False
         potential_loc = (self.location[0] + COMPASS[direction][0], self.location[1] + COMPASS[direction][1])
         idx = grid.grid_cells[potential_loc]
         cost, may_move = self.cost(grid, direction)
-        
+        #logger.info(f'move cost = {cost}, may move = {may_move}')
+
         # Vehicle may have reached destination
         if idx == self.definitions.loc['Destination', COL_CATEGORY]:
+
             new_loc = potential_loc
+            finished = True
             if self.Verbose > 0:
                 logger.info('Destination reached!')
                     
         # Vehicle may move over the field
         elif idx == self.definitions.loc['Field', COL_CATEGORY]:
+
             new_loc = potential_loc
             
         # Vehicle may not move thru a wall
         elif idx == self.definitions.loc['Wall', COL_CATEGORY]:
+
             new_loc = self.location
             if self.Verbose > 0:
                 logger.info('Vehicle cost from Wall: ' + str(cost))
             
         # Rock cannot be pushed thru a Vehicle
-        elif idx == self.definitions.loc['Vehicle', COL_CATEGORY]:
+        elif idx == self.definitions.loc['Vehicle', COL_CATEGORY] or \
+             idx == self.definitions.loc['Q', COL_CATEGORY] or \
+             idx == self.definitions.loc['Simple', COL_CATEGORY]:
+
             thing = grid.find_thing_by_loc(potential_loc)
             new_loc = self.location
             
         # Can move over a mushroom which is lost
         elif idx == self.definitions.loc['Mushroom', COL_CATEGORY]:
+
             thing = grid.find_thing_by_loc(potential_loc)
             thing.deleted = True
             new_loc = potential_loc # self.location
@@ -72,6 +83,7 @@ class Vehicle(Thing):
             
         # Cannot be moved over a cactus which remainslost
         elif idx == self.definitions.loc['Cactus', COL_CATEGORY]:
+
             thing = grid.find_thing_by_loc(potential_loc)
             new_loc = self.location
             if self.Verbose > 0:
@@ -79,6 +91,7 @@ class Vehicle(Thing):
             
         # Rock can move, depending on the object before it
         elif idx == self.definitions.loc['Rock', COL_CATEGORY]:
+
             new_loc = self.location
             if may_move == 'yes' or may_move == 'maybe':
                 thing = grid.find_thing_by_loc(potential_loc)
@@ -90,6 +103,7 @@ class Vehicle(Thing):
 
         # Can move over a green dot which is lost
         elif idx == self.definitions.loc['DotGreen', COL_CATEGORY]:
+
             thing = grid.find_thing_by_loc(potential_loc, 'DotGreen')
             thing.deleted = True
             new_loc = potential_loc # self.location
@@ -98,6 +112,7 @@ class Vehicle(Thing):
             
         # Can move over a red dot which is lost
         elif idx == self.definitions.loc['DotRed', COL_CATEGORY]:
+            
             thing = grid.find_thing_by_loc(potential_loc)
             thing.deleted = True
             new_loc = potential_loc # self.location
@@ -115,12 +130,12 @@ class Vehicle(Thing):
         grid.grid_cells[self.location] = self.definitions.loc['Field', COL_CATEGORY]
         old_loc = self.location
         self.location = new_loc
-        grid.grid_cells[self.location] = self.definitions.loc['Vehicle', COL_CATEGORY]
+        grid.grid_cells[self.location] = self.definitions.loc[self.__class__.__name__, COL_CATEGORY]
         
         if self.leave_trace:
             grid.add_thing(DotGreen, old_loc)
         
-        return cost, self.location
+        return cost, self.location, potential_loc, finished
     
     ### move ###
             
@@ -128,7 +143,7 @@ class Vehicle(Thing):
 
 class Mushroom(Thing):
     def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
-        super().__init__('Mushroom', location, definitions, grid)
+        super().__init__(location, definitions, grid)
 
         return
     
@@ -138,7 +153,7 @@ class Mushroom(Thing):
 
 class Cactus(Thing):
     def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
-        super().__init__('Cactus', location, definitions, grid)
+        super().__init__(location, definitions, grid)
 
         return
     
@@ -148,7 +163,7 @@ class Cactus(Thing):
 
 class Rock(Thing):
     def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
-        super().__init__('Rock', location, definitions, grid)
+        super().__init__(location, definitions, grid)
 
         return
     
@@ -212,12 +227,14 @@ class Rock(Thing):
         grid.grid_cells[self.location] = self.definitions.loc['Rock', COL_CATEGORY]
             
         return cost, self.location
+
+    ### move ###
             
-## Class: Rock ##
+### Class: Rock ###
         
 class Start(Thing):
     def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
-        super().__init__('Start', location, definitions, grid)
+        super().__init__(location, definitions, grid)
 
         self.visible = False
         self.mass = self.max_mass
@@ -226,11 +243,11 @@ class Start(Thing):
     
     # __init__ #
     
-## Class: Start ##
+### Class: Start ###
 
 class Destination(Thing):
     def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
-        super().__init__('Destination', location, definitions, grid)
+        super().__init__(location, definitions, grid)
 
         self.visible = False
         self.mass = self.max_mass
@@ -239,11 +256,11 @@ class Destination(Thing):
     
     # __init__ #
     
-## Class: Destination ##
+### Class: Destination ###
 
 class DotGreen(Thing):
     def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
-        super().__init__('DotGreen', location, definitions, grid)
+        super().__init__(location, definitions, grid)
 
         self.visible = False
         
@@ -251,11 +268,11 @@ class DotGreen(Thing):
     
     # __init__ #
     
-## Class: DotGreen ##
+### Class: DotGreen ###
 
 class DotRed(Thing):
     def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
-        super().__init__('DotRed', location, definitions, grid)
+        super().__init__(location, definitions, grid)
 
         self.visible = False
         
@@ -263,4 +280,4 @@ class DotRed(Thing):
     
     # __init__ #
     
-## Class: DotRed ##
+### Class: DotRed ###

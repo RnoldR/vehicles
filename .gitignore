@@ -155,3 +155,9 @@ dmypy.json
 vacature-text/src/pdelobelle/robbert-v2-dutch-base-finetuned-emotion/checkpoint-1000/config.json
 vacature-text/src/Chapter-02_classification.ipynb
 src/*.old
+src/Q-Learning_TRAIN_alpha_0.5_gamma_0.4_epsilon_0.png
+src/Q-Learning_TRAIN_alpha_0.7_gamma_0.4_epsilon_0.png
+.gitignore
+.gitignore
+src/Q-Learning_TRAIN_alpha_0.9_gamma_0.6_epsilon_0.png
+src/Q-Learning_TRAIN_alpha_0.7_gamma_0.6_epsilon_0.png

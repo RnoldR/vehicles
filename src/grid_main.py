@@ -10,6 +10,7 @@ import random
 import numpy as np
 import pandas as pd
 
+import matplotlib.pyplot as plt
 from grid_viewer import GridView2D
 from grid import Grid, GridGenerator
 
@@ -17,7 +18,7 @@ from grid_thing_data import ICON_STYLE, COL_CATEGORY, COL_ICON, COL_CLASS
 
 from grid_thing import Thing
 from grid_objects import Wall, Vehicle, Mushroom, Cactus, Rock, Start, Destination, DotGreen
-from grid_vehicles import Simple
+from grid_vehicles import Simple, Q
 from grid_generators import RandomGenerator, FixedGenerator
 
 from grid_ga import analyse_simple_vehicle
@@ -53,6 +54,9 @@ def test_move_around(res_path: str, icon_style: int, generator):
     vehicle_to_be_tracked.leave_trace = True
     grid.set_tracker(vehicle_to_be_tracked)
         
+    plt.imshow(grid.grid_cells)#, interpolation = 'nearest')
+    plt.show()
+
     grid_viewer.update_screen()
     grid_viewer.direction = "X"
     mass = grid.get_vehicles_mass(Vehicle)
@@ -263,15 +267,72 @@ def test_ga(res_path: str, icon_style: int):
 ### test_ga ###
 
 
+def test_q_world(res_path: str, icon_style: int, generator):
+    screen_width = 700
+    screen_height = 700
+    rows = 7
+    cols = 10
+
+    # create a grid with appropriate number of columns and rows
+    grid = Grid(generator, 
+                grid_size = (cols, rows), 
+                res_path = res_path, 
+                icon_style = icon_style,
+                verbose = 0,
+               )
+
+    logger.info(grid.print_grid(grid.grid_cells))
+    
+    # set vehicle on the start position and have it tracked by the grid
+    vehicle_to_be_tracked = grid.insert_thing(Q, grid.start.location, erase = True)
+    grid.set_tracker(vehicle_to_be_tracked)
+
+    # define a grid viewer for the grid
+    grid_viewer = GridView2D(grid, grid.definitions, screen_size=(screen_width, screen_height))
+    grid_viewer.update_screen()
+    grid_viewer.direction = "X"
+    grid.list_things()
+
+    logger.info('Creating Q table')
+    #vehicle_to_be_tracked.load_or_create_q_table('q-table-15x20.csv')
+    vehicle_to_be_tracked.create_q_table('q-table-15x20.csv')
+    vehicle_to_be_tracked.q_move()
+    vehicle_to_be_tracked.leave_trace = True
+
+    try:
+        time.sleep(1)
+        i = 0
+        while not vehicle_to_be_tracked.destination_reached and \
+              vehicle_to_be_tracked.mass > 0:
+
+            # grid_viewer.get_events()
+            # grid_viewer.move_things()
+            grid_viewer.next_turn()
+            grid_viewer.update_screen()
+            time.sleep(0.5)
+
+    finally:
+        if grid.destination_reached():
+            logger.info(f'Destination reached in {grid.turns} turns.')
+        
+        time.sleep(20)
+        pygame.quit()
+
+    return
+    
+### test_q_world ###
+
+
 if __name__ == "__main__":
     random.seed(42)
 
-    res_path='/media/i-files/home/arnold/development/python/ml/vehicles'
+    res_path = '/media/i-files/home/arnold/development/python/ml/vehicles'
 
-    r_generator = RandomGenerator(n_mushrooms=5, n_cactuses=4, n_rocks=3)
-    f_generator = FixedGenerator(level = 4)
-    test_move_around(res_path, 1, f_generator)
+    #r_generator = RandomGenerator(n_mushrooms=5, n_cactuses=4, n_rocks=3)
+    #f_generator = FixedGenerator(level = 4)
+    #test_move_around(res_path, 1, f_generator)
     # test_move_auto(res_path, 1, FixedGenerator, -0.5, 0.5, -1.0, 0.5)
     #test_many_vehicles(res_path, 1, FixedGenerator, 10)
     #test_ga(res_path, 1)
+    test_q_world(res_path, 1, FixedGenerator(level = 4))
    

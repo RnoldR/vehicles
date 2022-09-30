@@ -9,9 +9,11 @@ COL_CHAR = 'Char'
 COL_ICON = 'Icon'
 COL_CLASS = 'Class'
 
-COMPASS = {"N": (0, -1),
-           "E": (1, 0),
-           "S": (0, 1),
-           "W": (-1, 0),
-           "X": (0, 0)
+ACTIONS = ['N', 'E', 'S', 'W']
+
+COMPASS = {ACTIONS[0]: (0, -1),
+           ACTIONS[1]: (1, 0),
+           ACTIONS[2]: (0, 1),
+           ACTIONS[3]: (-1, 0),
+           #"X": (0, 0)
           }

@@ -25,25 +25,28 @@ class Thing():
     Seq: int = 0
     Verbose: int = 1
     
-    def __init__(self, type: str, location: tuple, definitions: pd.DataFrame, grid: Grid):
+    def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
         # increment sequence number
         Thing.Seq += 1
 
         # system attributes
         self.id: int = Thing.Seq
-        self.type: str = type
-        self.location: tuple = location
         self.definitions: pd.DataFrame = definitions
+        self.location: tuple = location
         self.grid = grid
         self.deleted: bool = False
-        
-        # some general attributes
-        self.visible: bool = True
-        self.age: int = 0
+
+        # assign the name from the class itself as it is created
+        # use this name to fetch its attributes from the definitions table
+        self.type: str = self.get_type() # __class__.__name__
         self.category = self.definitions.loc[self.type, COL_CATEGORY]
         self.mass = self.definitions.loc[self.type, COL_MASS]
         self.max_mass = self.definitions.loc[self.type, COL_MAXMASS]
         self.growth  = self.definitions.loc[self.type, COL_GROWTHFACTOR]
+        
+        # some general attributes
+        self.visible: bool = True
+        self.age: int = 0
         
         self.sensors = []
         self.effectors = []
@@ -67,6 +70,12 @@ class Thing():
             return -1
         
     ### d ###
+
+    def get_type(self) -> str:
+
+        return self.__class__.__name__
+
+    ### get_type ###
     
     def cost(self, grid, direction):
         ''' Computes the cost of a move in a certain direction
@@ -91,6 +100,7 @@ class Thing():
         potential_pos = (self.location[0] + COMPASS[direction][0], self.location[1] + COMPASS[direction][1])
         idx = grid.grid_cells[potential_pos]
         thing = grid.find_thing_by_loc(potential_pos)
+
         mess = 'None' if thing is None else thing.type
         logger.debug('{:s} - {:s} -> {:s} idx = {:d} thing.type = {:s}'.
                      format(str(self.type), str(self.location), str(potential_pos), idx, mess))
@@ -98,37 +108,69 @@ class Thing():
         may_move = 'no'
         
         if idx == self.definitions.loc['Field', COL_CATEGORY]:
+            
             cost = self.definitions.loc['Field', COL_MASS]
             may_move = 'yes'
+
         elif idx == self.definitions.loc['Wall', COL_CATEGORY]:
+
             cost = self.definitions.loc['Wall', COL_MASS]
             may_move = 'no'
-        elif idx == self.definitions.loc['Vehicle', COL_CATEGORY]:
-            cost = thing.mass
+
+        elif idx == self.definitions.loc['Vehicle', COL_CATEGORY] or \
+             idx == self.definitions.loc['Q', COL_CATEGORY] or \
+             idx == self.definitions.loc['Simple', COL_CATEGORY]:
+
+            if thing is not None:
+                cost = self.definitions.loc[thing.get_type(), COL_MASS] # [thing.__class__.__name__, COL_MASS]
+
+            else:
+                cost = 0
+                logger.info(self.grid.print_grid(self.grid.grid_cells))
+                self.grid.list_things()
+                x = 1
+
+            # if
+
             may_move = 'no'
+
         elif idx == self.definitions.loc['Mushroom', COL_CATEGORY]:
+
             cost = thing.mass
             may_move = 'maybe'
+
         elif idx == self.definitions.loc['Cactus', COL_CATEGORY]:
+
             cost = thing.mass
             may_move = 'maybe'
+
         elif idx == self.definitions.loc['Rock', COL_CATEGORY]:
+
             cost, may_move = thing.cost(grid, direction)
             cost = -abs(cost) + thing.mass
+
         elif idx == self.definitions.loc['Start', COL_CATEGORY]:
+
             cost = self.definitions.loc['Start', COL_MASS]
             may_move = 'yes'
+
         elif idx == self.definitions.loc['Destination', COL_CATEGORY]:
+
             cost = self.definitions.loc['Destination', COL_MASS]
             may_move = 'yes'
+
         elif idx == self.definitions.loc['DotGreen', COL_CATEGORY]:
+
             cost = self.definitions.loc['DotGreen', COL_MASS]
             may_move = 'yes'
+
         elif idx == self.definitions.loc['DotRed', COL_CATEGORY]:
+
             cost = self.definitions.loc['DotRed', COL_MASS]
             may_move = 'yes'
+
         else:
-            raise ValueError('*** Unknown field code in Rock.move:', idx)
+            raise ValueError('*** Unknown field code in Thing.cost function:', idx)
 
         return cost, may_move
     

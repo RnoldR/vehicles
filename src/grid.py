@@ -73,11 +73,15 @@ class Grid:
 
         else:
             return np.load(file_path, allow_pickle=False, fix_imports=True)
+
+        ### load_grid ###
         
     def generate_grid(self, generator) -> None:
         generator.generate(self)
          
         return
+
+    ### generate_grid ###
 
     def print_grid(self, matrix) -> None:
         cols, rows = matrix.shape
@@ -86,14 +90,28 @@ class Grid:
         for row in range(rows):
             line = ''
             for col in range(cols):
-                line += '{:2d}'.format(matrix[col, row])
+                line += '{:3d}'.format(matrix[col, row])
             # for
             strmat += line + '\n'
         # for
         
         return strmat
+
+    ### print_grid ###
     
-    def insert_thing(self, ThingClass, loc):
+    def insert_thing(self, ThingClass, loc, erase: bool = False):
+        # remove all objects from loc when erase is True
+        if erase:
+            thing = self.find_thing_by_loc(loc)
+            while thing is not None:
+                self.remove_thing(thing)
+                thing = self.find_thing_by_loc(loc)
+            
+            # while
+
+        # if
+
+        x = ThingClass.__name__
         # create thing from provided ThingClass
         thing = ThingClass(loc, self.definitions, self)
         thing.Verbose = self.verbose
@@ -138,36 +156,30 @@ class Grid:
             ThingClass (_type_): _description_
             loc (tuple): _description_
         """
-        # remove all objects from start location
-        thing = self.find_thing_by_loc(loc)
-        while thing is not None:
-            self.remove_thing(thing)
-            thing = self.find_thing_by_loc(loc)
-        
-        # while
-
         # insert start location
-        self.start = self.insert_thing(ThingClass, loc)
+        self.start = self.insert_thing(ThingClass, loc, erase = True)
         
         return
 
     ### set_start ###
     
     def set_destination(self, ThingClass, loc: tuple) -> None:
-        # remove all objects from destination location
-        thing = self.find_thing_by_loc(loc)
-        while thing is not None:
-            self.remove_thing(thing)
-            thing = self.find_thing_by_loc(loc)
-        
-        # while
-
         # insert destination location
-        self.destination = self.insert_thing(ThingClass, loc)
+        self.destination = self.insert_thing(ThingClass, loc, erase = True)
         
         return
 
     ### set_destination ###
+
+    def list_things(self):
+        for id in self.things_by_id:
+            thing = self.things_by_id[id]
+            logger.info(f'{thing.id}: {thing.type}, {thing.category} {thing.location} '
+                        f'mass={thing.mass:.2f} growth={thing.growth} age={thing.age}')
+
+        return
+
+    ### list_things ###
     
     def process_command(self, command: str, grid_pos: tuple, 
                         definitions: pd.DataFrame) -> None:
@@ -231,16 +243,22 @@ class Grid:
     
     ### generate_random_loc ###
     
-    def find_thing_by_loc(self, loc, type=''):
+    def find_thing_by_loc(self, loc, type = None):
         for key in self.things_by_id.keys():
             thing = self.things_by_id[key]
             if loc == thing.location:
-                if type == '':
+                if type is None:
                     return thing
+
                 else:
                     if thing.type == type:
                         return thing
-        
+
+                    # if
+                # if
+            # if
+        # for
+
         return None
     
     ### find_thing_by_loc ###
@@ -284,6 +302,8 @@ class Grid:
     ### remove_thing ###
     
     def move_things(self):
+        self.turns += 1
+
         # Move all things
         for id in self.things_by_id:
             thing = self.things_by_id[id]
