@@ -59,7 +59,7 @@ class Eye(Sensor):
 
     ### sensor_value ###
     
-    def sense_objects(self, grid: Grid) -> dict:
+    def sense_objects(self) -> dict:
         """
         Senses a square of the grid. The square is a dictionary with four
         keys: (lower x, lower y, upper x, upper y). Only grid elements
@@ -80,8 +80,8 @@ class Eye(Sensor):
         """
 
         # pre-select the objects this sensor is sensitive for        
-        things = [grid.things_by_id[k] for k in grid.things_by_id 
-                  if grid.things_by_id[k].category == self.sensitive_for]
+        things = [self.grid.things_by_id[k] for k in self.grid.things_by_id 
+                  if self.grid.things_by_id[k].category == self.sensitive_for]
 
         perceptions = []
         for thing in things:
@@ -106,5 +106,21 @@ class Eye(Sensor):
         # if
         
         return perceptions
+
+    ### sense_objects ###
+
+    def sense_layer(self) -> any:
+        matrix = np.zeros(self.grid.grid_cells.shape)
+
+        for row in range(matrix.shape[0]):
+            for col in range(matrix.shape[1]):
+                if self.grid.grid_cells[row, col] == self.sensitive_for:
+                    matrix[row, col] = self.grid.grid_cells[row, col]
+
+                # if
+            # for
+        # for
+
+        return matrix
     
-    ### sense ###
+    ### sense_layer ###

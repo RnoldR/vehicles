@@ -326,13 +326,13 @@ def test_q_world(res_path: str, icon_style: int, generator):
 if __name__ == "__main__":
     random.seed(42)
 
-    res_path = '/media/i-files/home/arnold/development/python/ml/vehicles'
+    res_path = '/media/i-files/home/arnold/development/ml/vehicles'
 
-    #r_generator = RandomGenerator(n_mushrooms=5, n_cactuses=4, n_rocks=3)
-    #f_generator = FixedGenerator(level = 4)
-    #test_move_around(res_path, 1, f_generator)
+    # generator = RandomGenerator(n_mushrooms=5, n_cactuses=4, n_rocks=3)
+    generator = FixedGenerator(level = 4)
+    test_move_around(res_path, 1, generator)
     # test_move_auto(res_path, 1, FixedGenerator, -0.5, 0.5, -1.0, 0.5)
     #test_many_vehicles(res_path, 1, FixedGenerator, 10)
     #test_ga(res_path, 1)
-    test_q_world(res_path, 1, FixedGenerator(level = 4))
+    # test_q_world(res_path, 1, FixedGenerator(level = 4))
    

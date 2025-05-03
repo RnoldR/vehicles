@@ -1,0 +1,14 @@
+Name;Category;Mass;MaxMass;GrowthFactor;Char;Icon
+Field;0;-0.01;0.01;0;" ";
+Wall;1;-1;10;0;"#";
+Vehicle;2;10;100;0;"v";
+Mushroom;3;1;10;0;"m";
+Cactus;4;-1.0;10;0;"c";
+Rock;5;-0.5;10;0;"r";
+Start;6;0;1;0;">";
+Destination;7;100;100;0;"+";
+DotGreen;8;-0.01;1;0;".";
+DotRed;9;-0.01;1;0;",";
+Simple;10;10;100;0;"S";
+Q;11;10;100;0;"Q";
+NeuralQ;12;10;100;0;"N";

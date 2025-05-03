@@ -14,19 +14,127 @@ from statistics import mean
 
 import matplotlib.pyplot as plt
 
+from tensorflow.keras.layers import Dense, Conv2D, Flatten
+from tensorflow.keras.models import Sequential
+
 from grid import Grid
 from grid_thing import Thing
 from grid_thing_data import COMPASS
 from grid_objects import Vehicle, Start, Destination
 from grid_sensors import Eye
-from grid_thing_data import COL_CATEGORY, ACTIONS
+from grid_thing_data import COL_CATEGORY, ACTIONS, COMPASS
+
+
+class NeuralQ(Vehicle):
+    def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
+        super().__init__(location, definitions, grid)
+        
+        # self.type = 'Vehicle'
+        # self.category = self.definitions.loc[self.type, COL_CATEGORY]
+        # self.mass = self.definitions.loc[self.type, COL_MASS]
+        self.direction = 'X'
+
+        # create basic sensors
+        self.sensors = [
+                        Eye(self, grid, definitions.loc['Wall', COL_CATEGORY]),
+                        Eye(self, grid, definitions.loc['Mushroom', COL_CATEGORY]),
+                        Eye(self, grid, definitions.loc['Cactus', COL_CATEGORY]),
+                        Eye(self, grid, definitions.loc['Destination', COL_CATEGORY]),
+                        Eye(self, grid, definitions.loc['NeuralQ', COL_CATEGORY]),
+                       ]
+
+        input_shape = self.grid_cells[0], self.grid_cells[1], len(self.sensors) # (6, 7, 3) # 3 values: 1) the actual piece, 2) the current player, 3) The player who is playing
+        number_of_actions = len(COMPASS) # 7
+
+        model = Sequential([
+            Conv2D(16, (4,4), activation="relu", input_shape=input_shape),
+            Flatten(),
+            Dense(128, activation="relu"),
+            Dense(32, activation="relu"),
+            Dense(number_of_actions)
+        ])
+        
+        return
+    
+    ### __init__ ###
+
+    def set_weights(self,w_wall: float, w_mush: float, w_cact: float, w_dest: float) -> None:
+
+        return
+
+    ### set_weights ###
+    
+    def next_turn(self):
+        super().next_turn()
+        
+        perceptions = self.perceive()
+        self.direction = self.evaluate(perceptions)
+        self.move(self.grid)
+
+        return
+    
+    ### next_turn ###
+
+    def perceive(self):
+        """ Return a cube of each objects presence in the grid
+
+        For each sensor return a numpy matrix with zeros except for the objects
+        the sensor is sensitive for. There are n matrices where n is the number
+        of sensors. These matrices are combined into a cube.
+
+        Returns:
+            numpy 3D array: cube of sensor matrices
+        """
+        # 
+        perceptions = []
+
+        for sensor in self.sensors:
+            matrix = sensor.sense_layer()
+            perceptions.append(matrix)
+        # for 
+
+        cube = np.array(perceptions)
+    
+        return cube
+
+    ### perceive ###
+
+    def evaluate(self, perceptions: np.array) -> any:
+        """ evaluates a next move based on perceptions of the environment
+
+        strategy for this vehicle
+          1. move in the direction of the destination
+          2. avoid cactuses at all cost
+          3. permit a small detour to eat a mushroom
+
+        Args:
+            perceptions (dict): for each category a list of perceptions 
+                ordered by descending signal strength
+
+        Returns:
+            _type_: advised move
+        """
+        
+        # compute desired move
+        max_move = 'something'
+
+        return max_move
+
+    ### evaluate ###
+
+### Class: NeuralQ ###
+
 
 class Q(Vehicle):
     def __init__(self, location: tuple, definitions: pd.DataFrame, grid: Grid):
         super().__init__(location, definitions, grid)
         
-        self.ALPHA = 0.5       # learning parameter 
-        self.GAMMA = 0.4       # importance of history 
+        self.alpha = 0.5       # learning parameter 
+        self.gamma = 0.4       # importance of history 
+        self.epsilon_max = 1
+        self.epsilon_min = 0.1
+        self.epsilon_decay = 0.99
+
         
         # Maximal number of steps per game: 10 # gridsize
         self.n_steps = 15 * self.grid.grid_size[0] * self.grid.grid_size[1]   
@@ -35,7 +143,7 @@ class Q(Vehicle):
         self.direction = 'X'   # initialize the direction at no move
 
         self.q_table = np.zeros((self.grid.grid_size[0] * self.grid.grid_size[1], len(ACTIONS)),
-                                dtype = np.float)
+                                dtype = float)
 
     ### __init__ ###
 
@@ -68,7 +176,7 @@ class Q(Vehicle):
 
     def calculate_new_q_value(self, previous_q_value, reward, max_next_q_value):
 
-        return previous_q_value + self.ALPHA * ( reward + self.GAMMA * max_next_q_value - previous_q_value) 
+        return previous_q_value + self.alpha * ( reward + self.gamma * max_next_q_value - previous_q_value) 
 
     ### calculate_new_q_value ###
 
@@ -87,7 +195,7 @@ class Q(Vehicle):
 
         # Create empty Q table
         self.q_table = np.zeros((self.grid.grid_size[0] * self.grid.grid_size[1], len(ACTIONS)),
-                                dtype = np.float)
+                                dtype = float)
 
         # store some statistics
         episodes = []
@@ -98,7 +206,8 @@ class Q(Vehicle):
         # backup grid.grid_cells
         backup = np.copy(self.grid.grid_cells)
 
-        # Keep track of the number of steps we took
+        # Setting up everything
+        epsilon = self.epsilon_max
         runs = 0
         change = 0
         start_location = self.grid.start.location
@@ -117,11 +226,12 @@ class Q(Vehicle):
             self.grid.set_destination(Destination, destination)
 
             # We will go for a linear epsilon greedy approach
-            epsilon = 1 - 0.9 * episode / self.n_episodes
+            # epsilon = 1 - 0.9 * episode / self.n_episodes
+            # Decay the epsilon value every game
+            epsilon *= self.epsilon_decay
+            if epsilon < self.epsilon_min:
+                epsilon = self.epsilon_min
             
-            # keep track of all changes
-            delta = 0
-
             # Perform the steps
             step = 0
             reward_sum = 0
@@ -242,14 +352,14 @@ class Q(Vehicle):
         ax3.set_title('Episode Changes (Smoothed {})'.format(weight))
 
         plt.subplots_adjust(left=0.125, bottom=0.1, right=0.9, top=0.8, wspace=0.5, hspace=0.5)
-        f.suptitle('Q-Learning: alpha = {}, gamma = {}, epsilon = {}'.format(self.ALPHA, self.GAMMA, 0), fontsize=16)
+        f.suptitle('Q-Learning: alpha = {}, gamma = {}, epsilon = {}'.format(self.alpha, self.gamma, 0), fontsize=16)
         
         ax2.set_xlabel('Episode')
 
         ax1.set_ylabel('Reward (Train)')
         ax2.set_ylabel('Length (Train)')
         ax3.set_ylabel('Change (Train)')
-        fig_name = 'Q-Learning_TRAIN_alpha_{}_gamma_{}_epsilon_{}.png'.format(self.ALPHA, self.GAMMA, 0)
+        fig_name = 'Q-Learning_TRAIN_alpha_{}_gamma_{}_epsilon_{}.png'.format(self.alpha, self.gamma, 0)
         
         f.savefig(fig_name, dpi=300, facecolor='w', edgecolor='w',
             orientation='portrait', papertype=None, format='png',

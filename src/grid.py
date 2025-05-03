@@ -12,14 +12,33 @@ import pandas as pd
 
 from grid_thing_data import COL_CATEGORY
 
+
 class Grid:
-    def __init__(self, 
-                 generator = None, 
-                 grid_size = (10,10), 
-                 res_path: str = '', 
-                 icon_style: int = 1,
-                 verbose: int = 1
-                ):
+    """ Represnts a 2-dimensional grid. Can be populated by GridThing objects.
+    """
+    def __init__(
+            self, 
+            generator = None, 
+            grid_size = (8,12), 
+            res_path: str = '', 
+            icon_style: int = 1,
+            verbose: int = 1
+        ):
+        """ Initializes Grid.
+
+        Args:
+            generator (GridGenerator, optional): GridGenerator to populate 
+                the Grid. Defaults to None.
+            grid_size (tuple, optional): Size of Grid in (Rows, Coluemns). 
+                Defaults to (8,12).
+            res_path (str, optional): Path to resources. Defaults to ''.
+            icon_style (int, optional): Selects type of icons for the GridThing. 
+                Defaults to 1.
+            verbose (int, optional): Talkative (1) or not (0). Defaults to 1.
+
+        Raises:
+            ValueError: The size of the Grid should be a tuple with two integers.
+        """
         # Assign parameters
         self.definitions = self.load_thing_definitions(res_path, icon_style)
         
@@ -27,6 +46,7 @@ class Grid:
         if not (isinstance(grid_size, (list, tuple)) and len(grid_size) == 2):
             raise ValueError("grid_size must be a tuple: (width, height).")
         
+        # Initialize Grid variables
         self.grid_size = grid_size
         self.turns: int = 0
         self.start = None
@@ -48,7 +68,31 @@ class Grid:
             
         return
 
-    def save_grid(self, file_path):
+    ### __init__ ###
+
+
+    def shape(self):
+        """ Returns the shape of grid_cells with the number of different elements
+
+        Returns: the numpy shape (rows, cols) appended by the number of different 
+            elements in the grid as a tuple, so: (# row, # cols, # different elements)
+        """
+        s = set(self.grid_cells.flatten())
+
+        return (self.grid_cells[0], self.grid_cells[1], len(s))
+
+    ### shape ###
+
+
+    def save_grid(self, file_path: str):
+        """ Saves the Grid to file.
+
+        Args:
+            file_path (str): name of file to save Grid to
+
+        Returns:
+            bool: True: save succeeded, else False
+        """
         if not isinstance(file_path, str):
             logging.critical("Invalid file_path. It must be a string.")
             return False
@@ -61,8 +105,21 @@ class Grid:
             np.save(file_path, self.grid_cells, allow_pickle=False, fix_imports=True)
             return True
 
+        # if
+
+    ### save_grid ###
+
+
     @classmethod
-    def load_grid(cls, file_path):
+    def load_grid(cls, file_path: str):
+        """ Loads the Grid from file.
+
+        Args:
+            file_path (str): Name of file to read Grid from
+
+        Returns:
+            bool: True if load succeeded, else False
+        """
         if not isinstance(file_path, str):
             logging.critical("Invalid file_path. It must be a string: " + file_path)
             return None
@@ -74,16 +131,33 @@ class Grid:
         else:
             return np.load(file_path, allow_pickle=False, fix_imports=True)
 
-        ### load_grid ###
+        # if
+
+    ### load_grid ###
+
         
     def generate_grid(self, generator) -> None:
+        """ Generates the Grid from a GridGenerator.
+
+        Args:
+            generator (GridGenerator): GridGenerator to generator Grid from
+        """
         generator.generate(self)
          
         return
 
     ### generate_grid ###
 
+
     def print_grid(self, matrix) -> None:
+        """ Creates text representation of the grid.
+
+        Args:
+            matrix (Object): _description_
+
+        Returns:
+            str: Grid in str format
+        """
         cols, rows = matrix.shape
         strmat = 'Grid size (width x height): {:d} x {:d}\n'.format(cols, rows)
         
@@ -98,9 +172,21 @@ class Grid:
         return strmat
 
     ### print_grid ###
+
     
     def insert_thing(self, ThingClass, loc, erase: bool = False):
-        # remove all objects from loc when erase is True
+        """ Inserts new ThingClass in specific location. 
+
+        Args:
+            ThingClass (Thing): Type of thing to insert
+            loc (tuple): (row, col) location
+            erase (bool, optional): When True, delete all existing objects 
+                loc before insertion. Defaults to False.
+
+        Returns:
+            _type_: _description_
+        """
+        # First: remove all objects from loc when erase is True.
         if erase:
             thing = self.find_thing_by_loc(loc)
             while thing is not None:
@@ -111,7 +197,7 @@ class Grid:
 
         # if
 
-        x = ThingClass.__name__
+        # x = ThingClass.__name__
         # create thing from provided ThingClass
         thing = ThingClass(loc, self.definitions, self)
         thing.Verbose = self.verbose
@@ -125,8 +211,18 @@ class Grid:
         return thing
     
     ### insert_thing ###
+
     
-    def insert_things(self, ThingClass, locs) -> list:
+    def insert_things(self, ThingClass, locs: list) -> list:
+        """ Insert Thing at list of locations.
+
+        Args:
+            ThingClass (object): Class of thing to insert
+            locs (list): List of locations
+
+        Returns:
+            list: _description_
+        """
         things = []
         if not locs is None:            
             for loc in locs:
@@ -136,25 +232,39 @@ class Grid:
         return things
 
     ### insert_things ###
+
     
-    def add_thing(self, ThingClass, loc):
+    def add_thing(self, ThingClass, loc: tuple):
+        """ Adds thing at end of turn.
+
+        Args:
+            ThingClass (Thing): Class of thing to insert.
+            loc (tuple): (row, col) of location in Grid)
+        """
         self.things_to_be_added_at_end_of_turn.append((ThingClass, loc))
     
     ### add_thing ###
 
+
     def set_tracker(self, thing) -> None:
+        """ Sets Grid tracker to Thing to be tracked.
+
+        Args:
+            thing (Thing): Thing to be tracked
+        """
         self.tracked = thing
         
         return
 
     ### set_tracker ###
 
+
     def set_start(self, ThingClass, loc: tuple) -> None:
-        """_summary_
+        """ Set start location
 
         Args:
-            ThingClass (_type_): _description_
-            loc (tuple): _description_
+            ThingClass (Thing): Set start location of Grid.
+            loc (tuple): (row, col)
         """
         # insert start location
         self.start = self.insert_thing(ThingClass, loc, erase = True)
@@ -162,6 +272,7 @@ class Grid:
         return
 
     ### set_start ###
+
     
     def set_destination(self, ThingClass, loc: tuple) -> None:
         # insert destination location
@@ -171,7 +282,10 @@ class Grid:
 
     ### set_destination ###
 
+
     def list_things(self):
+        """ Show a list of all things of the grid.
+        """
         for id in self.things_by_id:
             thing = self.things_by_id[id]
             logger.info(f'{thing.id}: {thing.type}, {thing.category} {thing.location} '
@@ -180,10 +294,22 @@ class Grid:
         return
 
     ### list_things ###
+
     
-    def process_command(self, command: str, grid_pos: tuple, 
-                        definitions: pd.DataFrame) -> None:
-        
+    def process_command(
+            self, 
+            command: str, 
+            grid_pos: tuple, 
+            definitions: pd.DataFrame
+        ) -> None:
+        """ Processes a command to operate on the Grid.
+
+        Args:
+            command (str): One-character command
+            grid_pos (tuple): Position for the command to operate on
+            definitions (pd.DataFrame): List of Thing definitions
+        """
+    
         if command == 'P':
             logger.info(self.print_grid(self.grid_cells))
         elif command == '-':
@@ -223,6 +349,7 @@ class Grid:
         return
 
     ### process_command###
+
     
     def generate_random_locs(self, num_things):
         # Check if things should be generated
@@ -242,8 +369,19 @@ class Grid:
         return thing_locations
     
     ### generate_random_loc ###
+
     
-    def find_thing_by_loc(self, loc, type = None):
+    def find_thing_by_loc(self, loc: tuple, type = None):
+        """ Find Things at specific location.
+
+        Args:
+            loc (tuple): Location to find Things
+            type (Thing, optional): Specific type of thing to look for. 
+                Defaults to None.
+
+        Returns:
+            Thing: first thing found will be returned
+        """
         for key in self.things_by_id.keys():
             thing = self.things_by_id[key]
             if loc == thing.location:
@@ -262,8 +400,17 @@ class Grid:
         return None
     
     ### find_thing_by_loc ###
+
     
     def find_thing_by_type(self, thing_type: str):
+        """ Find specific type of thing.
+
+        Args:
+            thing_type (str): Type of Thing
+
+        Returns:
+            Thing: First Thing found or None
+        """
         for key in self.things_by_id.keys():
             thing = self.things_by_id[key]
             if thing.type == thing_type:
@@ -273,6 +420,7 @@ class Grid:
 
     ### find_thing_by_type ###
 
+
     def find_category_at_loc(self, loc: tuple):
         cat = self.grid_cells[loc]
 
@@ -280,9 +428,16 @@ class Grid:
     
     ### find_category_at_loc ###
 
+
     def remove_thing(self, thing):
+        """ Remove and delete specific thing.
+
+        Args:
+            thing (Thing): Thing to be removed
+        """
         if thing is None:
             logger.warning('Grid.remove_thing: argument is None')
+
         else:
             id = thing.id
             if id in self.things_by_id.keys():
@@ -300,8 +455,15 @@ class Grid:
         return
 
     ### remove_thing ###
+
     
     def move_things(self):
+        """ Move all things based on their internal move function.
+
+        As a result of move, things can be deleted. They are flagged as 
+        to be deleted and at the end of all moves the Thing to remove
+        will be deleted.
+        """
         self.turns += 1
 
         # Move all things
@@ -323,8 +485,11 @@ class Grid:
         return
     
     ### move_things ###
+
     
     def next_turn(self):
+        """ Move all things and at the end insert or remove things when needed.
+        """
         self.turns += 1
 
         # Move all things
@@ -354,7 +519,18 @@ class Grid:
 
     ### next_turn ###
 
+
     def destination_reached(self, max_turns: int = 0) -> bool:
+        """ Returns True when destination has been reached.
+
+        Args:
+            max_turns (int, optional): Maximum number of turns after which
+                always True is returned. When zero max_turns will never be reached. 
+                Defaults to 0.
+
+        Returns:
+            bool: True when destionation reached or turns >- max_turns
+        """
 
         if max_turns > 0 and self.turns >= max_turns:
             return True
@@ -368,8 +544,17 @@ class Grid:
             return False
 
     ### destination_reached ###
+
     
-    def get_n_things(self, type_str):
+    def get_n_things(self, type_str) -> int:
+        """ Returns number of Things of specific type.
+
+        Args:
+            type_str (str): Type of Things to be counted
+
+        Returns:
+            int: Number of things of specific type
+        """
         n = 0
         for id in self.things_by_id:
             thing = self.things_by_id[id]
@@ -379,6 +564,7 @@ class Grid:
         return n
 
     ### get_n_things ###
+    
        
     def get_vehicles_mass(self, ThingClass):
         mass = 0
