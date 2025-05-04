@@ -579,7 +579,7 @@ class Grid:
 
     def load_thing_definitions(self, res_path: str, style: int):
         # load the csv file with Thing definitions into dataframe
-        filename = '../config/things.csv' # os.path.join(res_path, 'config/things.csv')
+        filename = f'{res_path}/config/things.csv' # os.path.join(res_path, 'config/things.csv')
         definitions = pd.read_csv(filename, sep=';', index_col='Name')
 
         # next load icon info from images is resource path

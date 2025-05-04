@@ -1,0 +1,8 @@
+numpy
+pandas
+pyyaml
+bitstring
+matplotlib
+tensorflow
+scikit-learn
+pygame
